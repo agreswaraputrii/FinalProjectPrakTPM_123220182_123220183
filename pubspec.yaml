@@ -46,6 +46,8 @@ dependencies:
   crypto: ^3.0.1 # Untuk hashing password
   uuid: ^4.3.3 # Untuk membuat unique session ID
   shared_preferences: ^2.2.2
+  provider: ^6.0.0 # <--- TAMBAHKAN BARIS INI
+
 
 
 dev_dependencies:
