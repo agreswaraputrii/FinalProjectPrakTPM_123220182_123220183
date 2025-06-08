@@ -560,7 +560,8 @@ class _HomePageState extends State<HomePage> {
     BuildContext context,
     ProductModel product,
   ) async {
-    final controller = TextEditingController(text: "1");
+    final int moq = product.minimumOrderQuantity;
+    final controller = TextEditingController(text: moq.toString());
 
     await showDialog(
       context: context,
@@ -569,7 +570,11 @@ class _HomePageState extends State<HomePage> {
         content: TextField(
           controller: controller,
           keyboardType: TextInputType.number,
-          decoration: const InputDecoration(labelText: "Jumlah"),
+          decoration: InputDecoration(
+            labelText: "Jumlah",
+            helperText: "Harus dalam kelipatan $moq",
+            hintText: "Contoh: $moq, ${moq * 2}, ${moq * 3}",
+          ),
         ),
         actions: [
           TextButton(
@@ -578,19 +583,32 @@ class _HomePageState extends State<HomePage> {
           ),
           ElevatedButton(
             onPressed: () {
-              final quantity = int.tryParse(controller.text) ?? 1;
-              if (quantity > 0 && quantity <= product.stock) {
-                _addToCart(product, quantity);
-                Navigator.pop(ctx);
-              } else {
+              final quantity = int.tryParse(controller.text) ?? 0;
+
+              // --- PERUBAHAN 3: Logika validasi kelipatan ---
+              if (quantity <= 0) {
+                ScaffoldMessenger.of(ctx).showSnackBar(
+                  const SnackBar(content: Text('Jumlah tidak boleh kosong.')),
+                );
+                return;
+              }
+              if (quantity % moq != 0) {
+                ScaffoldMessenger.of(ctx).showSnackBar(
+                  SnackBar(content: Text('Jumlah harus dalam kelipatan $moq.')),
+                );
+                return;
+              }
+              if (quantity > product.stock) {
                 ScaffoldMessenger.of(ctx).showSnackBar(
                   SnackBar(
-                    content: Text(
-                      'Jumlah tidak valid atau melebihi stok (${product.stock})',
-                    ),
+                    content: Text('Jumlah melebihi stok (${product.stock})'),
                   ),
                 );
+                return;
               }
+
+              _addToCart(product, quantity);
+              Navigator.pop(ctx);
             },
             child: const Text("Tambahkan"),
           ),

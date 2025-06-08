@@ -11,45 +11,49 @@ class OrderProvider with ChangeNotifier {
   bool _isLoading = false;
 
   OrderProvider() {
-    // Inisialisasi service saat provider dibuat
-    // Pastikan box sudah dibuka sebelumnya di main.dart atau halaman splash
     final orderBox = Hive.box<OrderModel>('orderBox');
     final userBox = Hive.box<UserModel>('userBox');
     _orderService = OrderService(orderBox, userBox);
-    loadOrders(); // Langsung muat data pesanan
+    loadOrders();
   }
 
-  // Getter
   List<OrderModel> get allOrders => _orders;
   bool get isLoading => _isLoading;
 
-  // Method untuk memuat semua pesanan dari Hive
   Future<void> loadOrders() async {
     _isLoading = true;
     notifyListeners();
-    
     _orders = _orderService.getAllOrders();
-    
     _isLoading = false;
     notifyListeners();
   }
 
-  // Method untuk menambah pesanan baru
   Future<void> addOrder(OrderModel newOrder) async {
-    // Simpan ke Hive melalui service
     await _orderService.saveOrder(newOrder);
+    _orders.insert(0, newOrder);
+    notifyListeners();
+  }
 
-    // Tambahkan ke list lokal dan beritahu UI untuk update
-    _orders.insert(0, newOrder); // Tambah di awal list
-    notifyListeners(); // INI BAGIAN PALING PENTING!
+  // --- METHOD BARU UNTUK UPDATE STATUS ---
+  Future<void> updateOrderStatus(String orderId, OrderStatus newStatus) async {
+    // Panggil service untuk menyimpan perubahan ke database Hive
+    await _orderService.updateOrderStatus(orderId, newStatus);
+
+    // Cari pesanan di dalam list provider dan perbarui statusnya
+    final index = _orders.indexWhere((order) => order.orderId == orderId);
+    if (index != -1) {
+      _orders[index].status = newStatus;
+      // Beri tahu semua widget yang mendengarkan untuk update UI
+      notifyListeners();
+    }
   }
-  
-  // Getter untuk memfilter pesanan sebagai pembeli (customer)
+
   List<OrderModel> getOrdersForCustomer(String username) {
-    return _orders.where((order) => order.customerUsername == username).toList();
+    return _orders
+        .where((order) => order.customerUsername == username)
+        .toList();
   }
-  
-  // Getter untuk memfilter pesanan sebagai penjual (seller)
+
   List<OrderModel> getOrdersForSeller(String username) {
     return _orders.where((order) => order.sellerUsername == username).toList();
   }

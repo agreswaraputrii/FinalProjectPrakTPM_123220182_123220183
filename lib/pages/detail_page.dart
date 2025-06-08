@@ -38,6 +38,7 @@ class _DetailPageState extends State<DetailPage> {
   void initState() {
     super.initState();
     isFavorite = widget.isInitialFavorite; // Inisialisasi dari parameter
+    quantity = widget.product.minimumOrderQuantity;
   }
 
   void toggleFavorite() {
@@ -60,30 +61,38 @@ class _DetailPageState extends State<DetailPage> {
   }
 
   void incrementQuantity() {
-    if (quantity < widget.product.stock) {
+    final moq = widget.product.minimumOrderQuantity;
+    final newQuantity = quantity + moq; // Tambah dengan kelipatan
+
+    if (newQuantity <= widget.product.stock) {
       setState(() {
-        quantity++;
+        quantity = newQuantity;
       });
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Tidak bisa menambah, stok sudah maksimal!'),
-          duration: Duration(seconds: 1),
+          content: Text('Tidak bisa menambah, stok tidak mencukupi!'),
         ),
       );
     }
   }
 
+  // --- PERUBAHAN 3: Logika pengurangan sesuai kelipatan ---
   void decrementQuantity() {
-    if (quantity > 1) {
+    final moq = widget.product.minimumOrderQuantity;
+    final newQuantity = quantity - moq; // Kurangi dengan kelipatan
+
+    // Jumlah tidak boleh kurang dari minimum order
+    if (newQuantity >= moq) {
       setState(() {
-        quantity--;
+        quantity = newQuantity;
       });
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Jumlah tidak bisa kurang dari 1!'),
-          duration: Duration(seconds: 1),
+        SnackBar(
+          content: Text(
+            'Jumlah tidak bisa kurang dari minimum order (${moq})!',
+          ),
         ),
       );
     }

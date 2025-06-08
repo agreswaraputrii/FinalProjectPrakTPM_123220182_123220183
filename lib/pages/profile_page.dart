@@ -6,6 +6,8 @@ import '../providers/product_provider.dart';
 import '../providers/order_provider.dart'; // <-- IMPORT ORDER PROVIDER
 import '../pages/detail_page.dart';
 import '../models/product_model.dart';
+import '../pages/manage_orders_page.dart';
+import '../pages/my_orders_page.dart';
 
 class ProfilePage extends StatefulWidget {
   final UserModel currentUser;
@@ -202,13 +204,19 @@ class _ProfilePageState extends State<ProfilePage> {
                   ),
                   const SizedBox(height: 30),
 
-                  // --- Action Buttons ---
                   SizedBox(
                     width: double.infinity,
                     height: 56,
                     child: ElevatedButton.icon(
                       onPressed: () {
-                        // Logika untuk melihat riwayat pesanan
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => MyOrdersPage(
+                              customerUsername: widget.currentUser.username,
+                            ),
+                          ),
+                        );
                       },
                       icon: const Icon(Icons.history, color: Colors.white),
                       label: Text(
@@ -234,7 +242,14 @@ class _ProfilePageState extends State<ProfilePage> {
                       height: 56,
                       child: ElevatedButton.icon(
                         onPressed: () {
-                          // Logika untuk mengelola pesanan masuk
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => ManageOrdersPage(
+                                sellerUsername: widget.currentUser.username,
+                              ),
+                            ),
+                          );
                         },
                         icon: const Icon(Icons.assignment, color: Colors.white),
                         label: Text(
@@ -253,7 +268,6 @@ class _ProfilePageState extends State<ProfilePage> {
                       ),
                     ),
                   const SizedBox(height: 30),
-
                   // --- My Uploaded Products (Data dari Provider) ---
                   if (widget.currentUser.roles.contains('seller')) ...[
                     Text(

@@ -1,5 +1,6 @@
+// lib/pages/cart_page.dart
 import 'package:flutter/material.dart';
-import 'package:furniture_store_app/models/product_model.dart';
+import '../models/product_model.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../pages/checkout_page.dart';
 
@@ -39,16 +40,11 @@ class _CartPageState extends State<CartPage> {
   }
 
   void clearCartAfterCheckout() {
-    setState(() {
-      widget.cartItems.clear();
-    });
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Checkout berhasil! Keranjang telah dikosongkan.'),
-        duration: Duration(seconds: 2),
-      ),
-    );
+    // Callback ini akan dipanggil dari checkout_page
+    // untuk membersihkan keranjang di state induk (HomePage)
+    for (var item in List.from(widget.cartItems)) {
+      widget.onRemoveFromCart(item);
+    }
   }
 
   @override
@@ -87,6 +83,10 @@ class _CartPageState extends State<CartPage> {
                       );
                       final totalItemPrice =
                           discountedPrice * cartItem.quantity;
+                      // Dapatkan MOQ produk, default ke 1 jika tidak valid
+                      final int moq = cartItem.product.minimumOrderQuantity > 0
+                          ? cartItem.product.minimumOrderQuantity
+                          : 1;
 
                       return Card(
                         margin: const EdgeInsets.only(bottom: 16),
@@ -94,13 +94,21 @@ class _CartPageState extends State<CartPage> {
                           borderRadius: BorderRadius.circular(12),
                         ),
                         child: ListTile(
+                          contentPadding: const EdgeInsets.symmetric(
+                            vertical: 8,
+                            horizontal: 16,
+                          ),
                           leading: ClipRRect(
                             borderRadius: BorderRadius.circular(8),
                             child: Image.network(
-                              cartItem.product.images.first,
+                              cartItem.product.thumbnail,
                               width: 60,
                               height: 60,
                               fit: BoxFit.cover,
+                              errorBuilder: (c, e, s) => const Icon(
+                                Icons.image_not_supported,
+                                size: 40,
+                              ),
                             ),
                           ),
                           title: Text(
@@ -108,31 +116,15 @@ class _CartPageState extends State<CartPage> {
                             style: GoogleFonts.poppins(
                               fontWeight: FontWeight.w600,
                             ),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
                           ),
-                          subtitle: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                cartItem.product.discountPercentage > 0
-                                    ? "\$${cartItem.product.price.toStringAsFixed(2)}"
-                                    : '',
-                                style: GoogleFonts.poppins(
-                                  fontSize: 13,
-                                  color: Colors.grey,
-                                  decoration:
-                                      cartItem.product.discountPercentage > 0
-                                      ? TextDecoration.lineThrough
-                                      : TextDecoration.none,
-                                ),
-                              ),
-                              Text(
-                                "\$${discountedPrice.toStringAsFixed(2)} x ${cartItem.quantity} = \$${totalItemPrice.toStringAsFixed(2)}",
-                                style: GoogleFonts.poppins(
-                                  color: Colors.green[700],
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                            ],
+                          subtitle: Text(
+                            "\$${discountedPrice.toStringAsFixed(2)} x ${cartItem.quantity}",
+                            style: GoogleFonts.poppins(
+                              color: Colors.green[800],
+                              fontWeight: FontWeight.w500,
+                            ),
                           ),
                           trailing: Row(
                             mainAxisSize: MainAxisSize.min,
@@ -143,20 +135,24 @@ class _CartPageState extends State<CartPage> {
                                   color: Colors.orange,
                                 ),
                                 onPressed: () {
-                                  if (cartItem.quantity > 1) {
+                                  final newQuantity = cartItem.quantity - moq;
+                                  if (newQuantity < moq) {
+                                    widget.onRemoveFromCart(cartItem);
+                                  } else {
                                     widget.onQuantityChanged(
                                       cartItem,
-                                      cartItem.quantity - 1,
+                                      newQuantity,
                                     );
-                                  } else {
-                                    widget.onRemoveFromCart(cartItem);
                                   }
                                   setState(() {});
                                 },
                               ),
                               Text(
                                 '${cartItem.quantity}',
-                                style: GoogleFonts.poppins(fontSize: 16),
+                                style: GoogleFonts.poppins(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                ),
                               ),
                               IconButton(
                                 icon: const Icon(
@@ -164,29 +160,20 @@ class _CartPageState extends State<CartPage> {
                                   color: Colors.green,
                                 ),
                                 onPressed: () {
-                                  widget.onQuantityChanged(
-                                    cartItem,
-                                    cartItem.quantity + 1,
-                                  );
-                                  setState(() {});
-                                },
-                              ),
-                              IconButton(
-                                icon: const Icon(
-                                  Icons.delete,
-                                  color: Colors.redAccent,
-                                ),
-                                onPressed: () {
-                                  widget.onRemoveFromCart(cartItem);
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(
-                                      content: Text(
-                                        '${cartItem.product.title} dihapus dari keranjang',
+                                  final newQuantity = cartItem.quantity + moq;
+                                  if (newQuantity <= cartItem.product.stock) {
+                                    widget.onQuantityChanged(
+                                      cartItem,
+                                      newQuantity,
+                                    );
+                                    setState(() {});
+                                  } else {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(
+                                        content: Text('Stok tidak mencukupi!'),
                                       ),
-                                      duration: const Duration(seconds: 2),
-                                    ),
-                                  );
-                                  setState(() {});
+                                    );
+                                  }
                                 },
                               ),
                             ],
@@ -196,82 +183,89 @@ class _CartPageState extends State<CartPage> {
                     },
                   ),
                 ),
+                // --- Container Total Harga dan Tombol Checkout ---
                 Container(
                   padding: const EdgeInsets.symmetric(
                     horizontal: 16,
                     vertical: 12,
                   ),
                   decoration: BoxDecoration(
-                    color: Colors.grey[200],
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        'Total Harga:',
-                        style: GoogleFonts.poppins(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w600,
-                          color: primaryColor,
-                        ),
+                    color: Colors.white,
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.1),
+                        blurRadius: 10,
+                        offset: const Offset(0, -5),
                       ),
-                      Text(
-                        '\$${totalPrice.toStringAsFixed(2)}',
-                        style: GoogleFonts.poppins(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.green[800],
+                    ],
+                  ),
+                  child: Column(
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            'Total Harga:',
+                            style: GoogleFonts.poppins(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          Text(
+                            '\$${totalPrice.toStringAsFixed(2)}',
+                            style: GoogleFonts.poppins(
+                              fontSize: 20,
+                              fontWeight: FontWeight.bold,
+                              color: primaryColor,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: accentColor,
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          onPressed: () {
+                            if (widget.cartItems.isEmpty) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text(
+                                    'Keranjang kosong, tidak bisa checkout',
+                                  ),
+                                ),
+                              );
+                              return;
+                            }
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => CheckoutPage(
+                                  cartItems: widget.cartItems,
+                                  onCheckoutComplete: clearCartAfterCheckout,
+                                ),
+                              ),
+                            );
+                          },
+                          child: Text(
+                            'Checkout',
+                            style: GoogleFonts.poppins(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.white,
+                            ),
+                          ),
                         ),
                       ),
                     ],
                   ),
                 ),
-                const SizedBox(height: 12),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: accentColor,
-                      minimumSize: const Size.fromHeight(48),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
-                    onPressed: () {
-                      if (widget.cartItems.isEmpty) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text(
-                              'Keranjang kosong, tidak bisa checkout',
-                            ),
-                            duration: Duration(seconds: 2),
-                          ),
-                        );
-                        return;
-                      }
-
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => CheckoutPage(
-                            cartItems: widget.cartItems,
-                            onCheckoutComplete:
-                                clearCartAfterCheckout, // ✅ Ganti di sini
-                          ),
-                        ),
-                      );
-                    },
-                    child: Text(
-                      'Checkout',
-                      style: GoogleFonts.poppins(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 16),
               ],
             ),
     );
