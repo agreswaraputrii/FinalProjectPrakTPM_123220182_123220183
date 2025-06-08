@@ -1,11 +1,12 @@
 import 'package:hive/hive.dart';
+import 'package:uuid/uuid.dart'; // Pastikan ini ada dan paket uuid sudah di pubspec.yaml
 
 part 'product_model.g.dart';
 
 @HiveType(typeId: 6) // <-- PASTIKAN INI ADALAH 6, agar sesuai dengan main.dart
 class ProductModel extends HiveObject {
   @HiveField(0)
-  final int id;
+  final String id; // Type changed from int to String
   @HiveField(1)
   final String title;
   @HiveField(2)
@@ -44,6 +45,8 @@ class ProductModel extends HiveObject {
   final String thumbnail;
   @HiveField(19)
   int quantity;
+  @HiveField(20) // NEW HIVE FIELD INDEX!
+  final String? uploaderUsername; // NEW: To store who uploaded this product
 
   ProductModel({
     required this.id,
@@ -66,11 +69,15 @@ class ProductModel extends HiveObject {
     required this.images,
     required this.thumbnail,
     this.quantity = 1,
+    this.uploaderUsername, // NEW: Make it nullable or provide a default if always present
   });
 
   factory ProductModel.fromJsonSafe(Map<String, dynamic> json) {
+    final uuid = Uuid();
     return ProductModel(
-      id: json['id'] ?? 0,
+      // Ensure id is a String. If the API returns an int, convert it.
+      // If null, generate a new UUID for local products.
+      id: json['id'] != null ? json['id'].toString() : uuid.v4(),
       title: json['title'] ?? '',
       description: json['description'] ?? '',
       category: json['category'] ?? '',
@@ -93,14 +100,16 @@ class ProductModel extends HiveObject {
               .toList() ??
           [],
       returnPolicy: json['returnPolicy'] ?? '',
-      minimumOrderQuantity: json['minimumOrderQuantity'] ?? 1,
+      minimumOrderQuantity: json['minimumOrderQuantity'] as int? ?? 1,
       images:
           (json['images'] as List<dynamic>?)
               ?.map((e) => e.toString())
               .toList() ??
           [],
       thumbnail: json['thumbnail'] ?? '',
-      quantity: 1,
+      quantity: json['quantity'] as int? ?? 1,
+      uploaderUsername:
+          json['uploaderUsername'] as String?, // NEW: Extract from JSON
     );
   }
 
@@ -125,14 +134,25 @@ class ProductModel extends HiveObject {
     'images': images,
     'thumbnail': thumbnail,
     'quantity': quantity,
+    'uploaderUsername': uploaderUsername, // NEW: Add to JSON
   };
 
   double get finalPrice => price - (price * discountPercentage / 100);
   bool get isInStock => stock > 0;
   bool get isLowStock => stock > 0 && stock <= 10;
+
+  @override
+  int get hashCode => id.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is ProductModel &&
+          runtimeType == other.runtimeType &&
+          id == other.id;
 }
 
-@HiveType(typeId: 7) // <-- PASTIKAN INI ADALAH 7
+@HiveType(typeId: 7)
 class ProductDimensions extends HiveObject {
   @HiveField(0)
   final double width;
@@ -166,7 +186,7 @@ class ProductDimensions extends HiveObject {
       '${width.toStringAsFixed(1)} x ${height.toStringAsFixed(1)} x ${depth.toStringAsFixed(1)} cm';
 }
 
-@HiveType(typeId: 8) // <-- PASTIKAN INI ADALAH 8
+@HiveType(typeId: 8)
 class ProductReview extends HiveObject {
   @HiveField(0)
   final int rating;

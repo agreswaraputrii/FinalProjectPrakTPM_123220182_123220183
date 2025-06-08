@@ -141,13 +141,13 @@ class OrderStatusAdapter extends TypeAdapter<OrderStatus> {
       case 0:
         return OrderStatus.pending;
       case 1:
-        return OrderStatus.paid;
+        return OrderStatus.confirmed;
       case 2:
-        return OrderStatus.shipped;
+        return OrderStatus.processing;
       case 3:
-        return OrderStatus.delivered;
+        return OrderStatus.shipped;
       case 4:
-        return OrderStatus.completed;
+        return OrderStatus.delivered;
       case 5:
         return OrderStatus.cancelled;
       default:
@@ -161,16 +161,16 @@ class OrderStatusAdapter extends TypeAdapter<OrderStatus> {
       case OrderStatus.pending:
         writer.writeByte(0);
         break;
-      case OrderStatus.paid:
+      case OrderStatus.confirmed:
         writer.writeByte(1);
         break;
-      case OrderStatus.shipped:
+      case OrderStatus.processing:
         writer.writeByte(2);
         break;
-      case OrderStatus.delivered:
+      case OrderStatus.shipped:
         writer.writeByte(3);
         break;
-      case OrderStatus.completed:
+      case OrderStatus.delivered:
         writer.writeByte(4);
         break;
       case OrderStatus.cancelled:

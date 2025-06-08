@@ -99,20 +99,25 @@ class _DetailPageState extends State<DetailPage> {
     final Color discountColor = const Color(0xFFD32F2F);
     final Color textColor = Colors.grey[800]!;
 
-
     double originalPrice = product.price;
     double discount = product.discountPercentage;
     double discountedPrice = product.finalPrice;
 
     // Akses ProductProvider untuk operasi CRUD
-    final productProvider = Provider.of<ProductProvider>(context, listen: false);
+    final productProvider = Provider.of<ProductProvider>(
+      context,
+      listen: false,
+    );
 
     return Scaffold(
       appBar: AppBar(
         backgroundColor: primaryColor,
         title: Text(
           product.title,
-          style: GoogleFonts.poppins(fontWeight: FontWeight.w600, color: Colors.white),
+          style: GoogleFonts.poppins(
+            fontWeight: FontWeight.w600,
+            color: Colors.white,
+          ),
           overflow: TextOverflow.ellipsis,
         ),
         actions: [
@@ -134,7 +139,9 @@ class _DetailPageState extends State<DetailPage> {
             SizedBox(
               height: 250,
               child: PageView.builder(
-                itemCount: product.images.isNotEmpty ? product.images.length : 1, // Handle empty images list
+                itemCount: product.images.isNotEmpty
+                    ? product.images.length
+                    : 1, // Handle empty images list
                 itemBuilder: (context, index) {
                   return ClipRRect(
                     borderRadius: BorderRadius.circular(18),
@@ -146,9 +153,14 @@ class _DetailPageState extends State<DetailPage> {
                             errorBuilder: (context, error, stackTrace) =>
                                 const Icon(Icons.broken_image, size: 50),
                           )
-                        : Container( // Placeholder if no images
+                        : Container(
+                            // Placeholder if no images
                             color: Colors.grey[300],
-                            child: const Icon(Icons.image_not_supported, size: 50, color: Colors.grey),
+                            child: const Icon(
+                              Icons.image_not_supported,
+                              size: 50,
+                              color: Colors.grey,
+                            ),
                           ),
                   );
                 },
@@ -182,10 +194,14 @@ class _DetailPageState extends State<DetailPage> {
                 Text(
                   "Stock: ${product.stock}",
                   style: GoogleFonts.poppins(
-                      fontSize: 14,
-                      color: product.stock <= 10 && product.stock > 0 ? Colors.orange : textColor,
-                      fontWeight: product.stock <= 10 && product.stock > 0 ? FontWeight.bold : FontWeight.normal,
-                    ),
+                    fontSize: 14,
+                    color: product.stock <= 10 && product.stock > 0
+                        ? Colors.orange
+                        : textColor,
+                    fontWeight: product.stock <= 10 && product.stock > 0
+                        ? FontWeight.bold
+                        : FontWeight.normal,
+                  ),
                 ),
               ],
             ),
@@ -258,7 +274,10 @@ class _DetailPageState extends State<DetailPage> {
                 color: primaryColor,
               ),
             ),
-            Text(product.description, style: GoogleFonts.poppins(fontSize: 14, color: textColor)),
+            Text(
+              product.description,
+              style: GoogleFonts.poppins(fontSize: 14, color: textColor),
+            ),
             const SizedBox(height: 12),
             // Dimensi dan Berat
             Text(
@@ -344,14 +363,35 @@ class _DetailPageState extends State<DetailPage> {
                   leading: Icon(Icons.person, color: primaryColor),
                   title: Text(
                     review.reviewerName,
-                    style: GoogleFonts.poppins(fontWeight: FontWeight.w600, color: textColor),
+                    style: GoogleFonts.poppins(
+                      fontWeight: FontWeight.w600,
+                      color: textColor,
+                    ),
                   ),
                   subtitle: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(review.comment, style: GoogleFonts.poppins(fontSize: 14, color: textColor)),
-                      Text("Rating: ${review.rating}/5", style: GoogleFonts.poppins(fontSize: 12, color: Colors.grey[600])),
-                      Text("Tanggal: ${review.date}", style: GoogleFonts.poppins(fontSize: 12, color: Colors.grey[600])),
+                      Text(
+                        review.comment,
+                        style: GoogleFonts.poppins(
+                          fontSize: 14,
+                          color: textColor,
+                        ),
+                      ),
+                      Text(
+                        "Rating: ${review.rating}/5",
+                        style: GoogleFonts.poppins(
+                          fontSize: 12,
+                          color: Colors.grey[600],
+                        ),
+                      ),
+                      Text(
+                        "Tanggal: ${review.date}",
+                        style: GoogleFonts.poppins(
+                          fontSize: 12,
+                          color: Colors.grey[600],
+                        ),
+                      ),
                     ],
                   ),
                 );
@@ -362,7 +402,9 @@ class _DetailPageState extends State<DetailPage> {
             // --- Tombol Edit/Delete (Hanya untuk Seller) ---
             if (widget.isSeller) // Logika kondisional di sini
               Padding(
-                padding: const EdgeInsets.only(bottom: 20.0), // Beri sedikit jarak
+                padding: const EdgeInsets.only(
+                  bottom: 20.0,
+                ), // Beri sedikit jarak
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                   children: [
@@ -372,24 +414,44 @@ class _DetailPageState extends State<DetailPage> {
                           Navigator.push(
                             context,
                             MaterialPageRoute(
-                              builder: (context) => EditProductPage(product: product),
+                              builder: (context) =>
+                                  EditProductPage(product: product),
                             ),
-                          ).then((_) {
-                            // Setelah kembali dari EditProductPage, mungkin perlu update UI
-                            // Ini bisa dilakukan dengan memanggil fungsi update yang dikirim dari Home,
-                            // atau jika DetailPage ini di refresh, data product akan diperbarui.
-                            // Untuk saat ini, kita mengandalkan HomePage untuk refresh.
+                          ).then((updatedProduct) {
+                            // Capture the result
+                            // This `then` block will run when EditProductPage is popped
+                            if (updatedProduct != null &&
+                                updatedProduct is ProductModel) {
+                              // If an updated product is returned, rebuild the UI
+                              setState(() {
+                                // Although the ProductProvider is already updated,
+                                // we might want to refresh the local product state if DetailPage holds it.
+                                // However, since we're using widget.product directly,
+                                // we'd need to fetch the updated product from the provider
+                                // or assume that the ProductProvider's notifyListeners()
+                                // will cause a rebuild if DetailPage was a Consumer.
+                                // For simplicity, let's just make sure the display is consistent.
+                                // A simpler approach if only local list is modified:
+                                // if (productProvider.allProducts.contains(updatedProduct)) { ... }
+                              });
+                            }
                           });
                         },
                         icon: const Icon(Icons.edit, color: Colors.white),
                         label: Text(
                           'Edit Produk',
-                          style: GoogleFonts.poppins(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
+                          style: GoogleFonts.poppins(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
                         ),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: primaryColor,
                           padding: const EdgeInsets.symmetric(vertical: 12),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
                         ),
                       ),
                     ),
@@ -401,15 +463,20 @@ class _DetailPageState extends State<DetailPage> {
                             context: context,
                             builder: (context) => AlertDialog(
                               title: const Text('Hapus Produk?'),
-                              content: Text('Apakah Anda yakin ingin menghapus "${product.title}"?'),
+                              content: Text(
+                                'Apakah Anda yakin ingin menghapus "${product.title}"?',
+                              ),
                               actions: [
                                 TextButton(
-                                  onPressed: () => Navigator.pop(context, false),
+                                  onPressed: () =>
+                                      Navigator.pop(context, false),
                                   child: const Text('Batal'),
                                 ),
                                 TextButton(
                                   onPressed: () => Navigator.pop(context, true),
-                                  style: TextButton.styleFrom(foregroundColor: Colors.red),
+                                  style: TextButton.styleFrom(
+                                    foregroundColor: Colors.red,
+                                  ),
                                   child: const Text('Hapus'),
                                 ),
                               ],
@@ -417,29 +484,49 @@ class _DetailPageState extends State<DetailPage> {
                           );
 
                           if (confirmDelete == true) {
-                            final success = await productProvider.deleteProduct(product.id);
+                            // CHANGED: Calling deleteProduct with product.id (which is String)
+                            final success = await productProvider.deleteProduct(
+                              product.id,
+                            );
 
                             if (success) {
                               ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(content: Text('Produk berhasil dihapus!')),
+                                const SnackBar(
+                                  content: Text('Produk berhasil dihapus!'),
+                                ),
                               );
-                              Navigator.pop(context); // Kembali ke halaman sebelumnya (HomePage)
+                              Navigator.pop(
+                                context,
+                              ); // Kembali ke halaman sebelumnya (HomePage)
                             } else {
                               ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(content: Text('Gagal menghapus produk: ${productProvider.errorMessage ?? "Terjadi kesalahan"}')),
+                                SnackBar(
+                                  content: Text(
+                                    'Gagal menghapus produk: ${productProvider.errorMessage ?? "Terjadi kesalahan"}',
+                                  ),
+                                ),
                               );
                             }
                           }
                         },
-                        icon: const Icon(Icons.delete_forever, color: Colors.white),
+                        icon: const Icon(
+                          Icons.delete_forever,
+                          color: Colors.white,
+                        ),
                         label: Text(
                           'Hapus Produk',
-                          style: GoogleFonts.poppins(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
+                          style: GoogleFonts.poppins(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
                         ),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.red.shade700,
                           padding: const EdgeInsets.symmetric(vertical: 12),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
                         ),
                       ),
                     ),

@@ -21,20 +21,70 @@ class _EditProductPageState extends State<EditProductPage> {
   late TextEditingController _descriptionController;
   late TextEditingController _categoryController;
   late TextEditingController _priceController;
+  late TextEditingController _discountPercentageController;
+  late TextEditingController _ratingController;
   late TextEditingController _stockController;
+  late TextEditingController _tagsController;
+  late TextEditingController _weightController;
+  late TextEditingController _warrantyInformationController;
+  late TextEditingController _shippingInformationController;
+  late TextEditingController _returnPolicyController;
+  late TextEditingController _minimumOrderQuantityController;
   late TextEditingController _thumbnailController;
-  // Tambahkan controller lain jika perlu, pastikan juga diisi di initState
+
+  // Dropdown for availabilityStatus
+  final List<String> _availabilityStatusOptions = [
+    'In Stock',
+    'Out of Stock',
+    'Low Stock',
+    'Coming Soon',
+  ];
+  String? _selectedAvailabilityStatus;
 
   @override
   void initState() {
     super.initState();
-    // Inisialisasi controller dengan data produk yang ada
+    // Inisialisasi semua controller dengan data produk yang ada
     _titleController = TextEditingController(text: widget.product.title);
-    _descriptionController = TextEditingController(text: widget.product.description);
+    _descriptionController = TextEditingController(
+      text: widget.product.description,
+    );
     _categoryController = TextEditingController(text: widget.product.category);
-    _priceController = TextEditingController(text: widget.product.price.toString());
-    _stockController = TextEditingController(text: widget.product.stock.toString());
-    _thumbnailController = TextEditingController(text: widget.product.thumbnail);
+    _priceController = TextEditingController(
+      text: widget.product.price.toString(),
+    );
+    _discountPercentageController = TextEditingController(
+      text: widget.product.discountPercentage.toString(),
+    );
+    _ratingController = TextEditingController(
+      text: widget.product.rating.toString(),
+    );
+    _stockController = TextEditingController(
+      text: widget.product.stock.toString(),
+    );
+    _tagsController = TextEditingController(
+      text: widget.product.tags.join(', '),
+    ); // Join list to string
+    _weightController = TextEditingController(
+      text: widget.product.weight.toString(),
+    );
+    _warrantyInformationController = TextEditingController(
+      text: widget.product.warrantyInformation,
+    );
+    _shippingInformationController = TextEditingController(
+      text: widget.product.shippingInformation,
+    );
+    _selectedAvailabilityStatus =
+        widget.product.availabilityStatus; // Set initial dropdown value
+    _returnPolicyController = TextEditingController(
+      text: widget.product.returnPolicy,
+    );
+    _minimumOrderQuantityController = TextEditingController(
+      text: widget.product.minimumOrderQuantity.toString(),
+    );
+    _thumbnailController = TextEditingController(
+      text: widget.product.thumbnail,
+    );
   }
 
   @override
@@ -43,14 +93,25 @@ class _EditProductPageState extends State<EditProductPage> {
     _descriptionController.dispose();
     _categoryController.dispose();
     _priceController.dispose();
+    _discountPercentageController.dispose();
+    _ratingController.dispose();
     _stockController.dispose();
+    _tagsController.dispose();
+    _weightController.dispose();
+    _warrantyInformationController.dispose();
+    _shippingInformationController.dispose();
+    _returnPolicyController.dispose();
+    _minimumOrderQuantityController.dispose();
     _thumbnailController.dispose();
     super.dispose();
   }
 
   Future<void> _updateProduct() async {
     if (_formKey.currentState!.validate()) {
-      final productProvider = Provider.of<ProductProvider>(context, listen: false);
+      final productProvider = Provider.of<ProductProvider>(
+        context,
+        listen: false,
+      );
 
       // Buat objek ProductModel yang diperbarui
       final updatedProduct = ProductModel(
@@ -59,51 +120,53 @@ class _EditProductPageState extends State<EditProductPage> {
         description: _descriptionController.text,
         category: _categoryController.text,
         price: double.parse(_priceController.text),
-        // Pertahankan nilai lama untuk field yang tidak diedit di form ini
-        discountPercentage: widget.product.discountPercentage,
-        rating: widget.product.rating,
+        discountPercentage: double.parse(_discountPercentageController.text),
+        rating: double.parse(_ratingController.text),
         stock: int.parse(_stockController.text),
-        tags: widget.product.tags,
-        weight: widget.product.weight,
+        tags: _tagsController.text
+            .split(',')
+            .map((e) => e.trim())
+            .where((e) => e.isNotEmpty)
+            .toList(),
+        weight: double.parse(_weightController.text),
+        // Assume dimensions are not editable on this page, retain original
         dimensions: widget.product.dimensions,
-        warrantyInformation: widget.product.warrantyInformation,
-        shippingInformation: widget.product.shippingInformation,
-        availabilityStatus: widget.product.availabilityStatus,
+        warrantyInformation: _warrantyInformationController.text,
+        shippingInformation: _shippingInformationController.text,
+        availabilityStatus: _selectedAvailabilityStatus!,
+        // Assume reviews are not editable on this page, retain original
         reviews: widget.product.reviews,
-        returnPolicy: widget.product.returnPolicy,
-        minimumOrderQuantity: widget.product.minimumOrderQuantity,
-        // Ini contoh bagaimana Anda bisa mengupdate images.
-        // Jika form hanya punya thumbnail, maka images akan hanya berisi thumbnail.
-        // Jika ada input untuk multiple images, logikanya akan lebih kompleks.
-        images: widget.product.images.isNotEmpty ? List.from(widget.product.images) : [], // Buat salinan list
+        returnPolicy: _returnPolicyController.text,
+        minimumOrderQuantity: int.parse(_minimumOrderQuantityController.text),
+        // For images, if you only have a thumbnail input, make sure images list is consistent
+        images: _thumbnailController.text.isNotEmpty
+            ? [_thumbnailController.text]
+            : [],
         thumbnail: _thumbnailController.text,
-        quantity: widget.product.quantity, // Quantity dari cart tidak relevan untuk edit produk
+        quantity: widget
+            .product
+            .quantity, // Quantity from cart is irrelevant for product edit
       );
 
-      // Pastikan thumbnail juga diperbarui di list images jika images kosong atau hanya satu.
-      // Ini bisa disesuaikan dengan kebutuhan Anda.
-      if (updatedProduct.images.isEmpty && _thumbnailController.text.isNotEmpty) {
-          updatedProduct.images.add(_thumbnailController.text);
-      } else if (updatedProduct.images.isNotEmpty) {
-          // Jika sudah ada gambar lain, Anda bisa memutuskan apakah thumbnail menggantikan gambar pertama
-          // atau hanya memastikan thumbnail ada di daftar.
-          // Untuk DummyJSON, biasanya hanya ada 1 thumbnail dan list images terpisah.
-          // Jadi mungkin Anda hanya perlu memastikan thumbnail diperbarui.
-          // updatedProduct.images[0] = _thumbnailController.text; // Contoh jika thumbnail selalu di index 0
-      }
-
-
-      final success = await productProvider.updateProduct(widget.product.id, updatedProduct);
+      // Call updateProduct on the provider.
+      // This method now expects a String ID.
+      final success = await productProvider.updateProduct(
+        widget.product.id,
+        updatedProduct,
+      );
 
       if (success) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Produk berhasil diperbarui!')),
         );
-        Navigator.pop(context); // Kembali ke halaman sebelumnya (misal DetailPage)
+        // Pop the page and potentially return the updated product
+        Navigator.pop(context, updatedProduct);
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Gagal memperbarui produk: ${productProvider.errorMessage ?? "Terjadi kesalahan"}'),
+            content: Text(
+              'Gagal memperbarui produk: ${productProvider.errorMessage ?? "Terjadi kesalahan"}',
+            ),
             backgroundColor: Colors.red,
           ),
         );
@@ -136,7 +199,9 @@ class _EditProductPageState extends State<EditProductPage> {
                   children: [
                     TextFormField(
                       controller: _titleController,
-                      decoration: const InputDecoration(labelText: 'Nama Produk'),
+                      decoration: const InputDecoration(
+                        labelText: 'Nama Produk',
+                      ),
                       validator: (value) {
                         if (value == null || value.isEmpty) {
                           return 'Nama produk tidak boleh kosong';
@@ -146,7 +211,9 @@ class _EditProductPageState extends State<EditProductPage> {
                     ),
                     TextFormField(
                       controller: _descriptionController,
-                      decoration: const InputDecoration(labelText: 'Deskripsi Produk'),
+                      decoration: const InputDecoration(
+                        labelText: 'Deskripsi Produk',
+                      ),
                       maxLines: 3,
                       validator: (value) {
                         if (value == null || value.isEmpty) {
@@ -170,8 +237,46 @@ class _EditProductPageState extends State<EditProductPage> {
                       decoration: const InputDecoration(labelText: 'Harga'),
                       keyboardType: TextInputType.number,
                       validator: (value) {
-                        if (value == null || value.isEmpty || double.tryParse(value) == null) {
+                        if (value == null ||
+                            value.isEmpty ||
+                            double.tryParse(value) == null) {
                           return 'Masukkan harga yang valid';
+                        }
+                        return null;
+                      },
+                    ),
+                    TextFormField(
+                      controller: _discountPercentageController,
+                      decoration: const InputDecoration(
+                        labelText: 'Diskon (%)',
+                      ),
+                      keyboardType: TextInputType.number,
+                      validator: (value) {
+                        if (value == null ||
+                            value.isEmpty ||
+                            double.tryParse(value) == null ||
+                            double.parse(value) < 0 ||
+                            double.parse(value) > 100) {
+                          return 'Masukkan diskon yang valid (0-100)';
+                        }
+                        return null;
+                      },
+                    ),
+                    TextFormField(
+                      controller: _ratingController,
+                      decoration: const InputDecoration(
+                        labelText: 'Rating (0.0 - 5.0)',
+                      ),
+                      keyboardType: const TextInputType.numberWithOptions(
+                        decimal: true,
+                      ),
+                      validator: (value) {
+                        if (value == null ||
+                            value.isEmpty ||
+                            double.tryParse(value) == null ||
+                            double.parse(value) < 0 ||
+                            double.parse(value) > 5) {
+                          return 'Masukkan rating yang valid (0.0-5.0)';
                         }
                         return null;
                       },
@@ -181,15 +286,104 @@ class _EditProductPageState extends State<EditProductPage> {
                       decoration: const InputDecoration(labelText: 'Stok'),
                       keyboardType: TextInputType.number,
                       validator: (value) {
-                        if (value == null || value.isEmpty || int.tryParse(value) == null) {
+                        if (value == null ||
+                            value.isEmpty ||
+                            int.tryParse(value) == null) {
                           return 'Masukkan stok yang valid';
                         }
                         return null;
                       },
                     ),
                     TextFormField(
+                      controller: _tagsController,
+                      decoration: const InputDecoration(
+                        labelText: 'Tags (pisahkan dengan koma)',
+                      ),
+                    ),
+                    TextFormField(
+                      controller: _weightController,
+                      decoration: const InputDecoration(
+                        labelText: 'Berat (kg)',
+                      ),
+                      keyboardType: const TextInputType.numberWithOptions(
+                        decimal: true,
+                      ),
+                      validator: (value) {
+                        if (value == null ||
+                            value.isEmpty ||
+                            double.tryParse(value) == null ||
+                            double.parse(value) < 0) {
+                          return 'Masukkan berat yang valid';
+                        }
+                        return null;
+                      },
+                    ),
+                    TextFormField(
+                      controller: _warrantyInformationController,
+                      decoration: const InputDecoration(
+                        labelText: 'Informasi Garansi',
+                      ),
+                    ),
+                    TextFormField(
+                      controller: _shippingInformationController,
+                      decoration: const InputDecoration(
+                        labelText: 'Informasi Pengiriman',
+                      ),
+                    ),
+                    DropdownButtonFormField<String>(
+                      value: _selectedAvailabilityStatus,
+                      decoration: const InputDecoration(
+                        labelText: 'Status Ketersediaan',
+                        border: OutlineInputBorder(),
+                      ),
+                      items: _availabilityStatusOptions
+                          .map(
+                            (status) => DropdownMenuItem(
+                              value: status,
+                              child: Text(status),
+                            ),
+                          )
+                          .toList(),
+                      onChanged: (newValue) {
+                        setState(() {
+                          _selectedAvailabilityStatus = newValue;
+                        });
+                      },
+                      validator: (value) {
+                        if (value == null || value.isEmpty) {
+                          return 'Pilih status ketersediaan';
+                        }
+                        return null;
+                      },
+                    ),
+                    const SizedBox(height: 16),
+                    TextFormField(
+                      controller: _returnPolicyController,
+                      decoration: const InputDecoration(
+                        labelText: 'Kebijakan Retur',
+                      ),
+                    ),
+                    TextFormField(
+                      controller: _minimumOrderQuantityController,
+                      decoration: const InputDecoration(
+                        labelText: 'Minimal Order Quantity',
+                      ),
+                      keyboardType: TextInputType.number,
+                      validator: (value) {
+                        if (value == null ||
+                            value.isEmpty ||
+                            int.tryParse(value) == null ||
+                            int.parse(value) < 1) {
+                          return 'Masukkan minimal order quantity yang valid';
+                        }
+                        return null;
+                      },
+                    ),
+                    TextFormField(
                       controller: _thumbnailController,
-                      decoration: const InputDecoration(labelText: 'URL Gambar Thumbnail'),
+                      decoration: const InputDecoration(
+                        labelText: 'URL Gambar Thumbnail',
+                      ),
                       validator: (value) {
                         if (value == null || value.isEmpty) {
                           return 'URL gambar thumbnail tidak boleh kosong';
@@ -204,11 +398,16 @@ class _EditProductPageState extends State<EditProductPage> {
                         backgroundColor: const Color(0xFFFF7043), // accentColor
                         foregroundColor: Colors.white,
                         padding: const EdgeInsets.symmetric(vertical: 16),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
                       ),
                       child: Text(
                         'Perbarui Produk',
-                        style: GoogleFonts.poppins(fontSize: 18, fontWeight: FontWeight.bold),
+                        style: GoogleFonts.poppins(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                     ),
                     if (productProvider.errorMessage != null)

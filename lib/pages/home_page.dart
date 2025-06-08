@@ -1,4 +1,4 @@
-// lib/pages/home_page.dart - Versi Debug
+// lib/pages/home_page.dart
 import 'package:flutter/material.dart';
 import 'package:hive/hive.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -24,7 +24,9 @@ import '../providers/product_provider.dart';
 import '../pages/login_page.dart';
 import '../pages/detail_page.dart';
 import '../pages/favorite_page.dart';
-import '../pages/profile_page.dart';
+import '../pages/profile_page.dart'; // User Profile Page
+import '../pages/my_personal_profile_page.dart'; // My Personal Profile Page
+import '../pages/saran_kesan_page.dart'; // Saran & Kesan Page
 import '../pages/notification_page.dart';
 import '../pages/add_product_page.dart';
 
@@ -47,46 +49,30 @@ class _HomePageState extends State<HomePage> {
   Box<NotificationModel>? _notificationBox;
 
   int _notificationCount = 0;
+  int _selectedIndex =
+      0; // 0: Home, 1: User Profile, 2: My Personal Profile, 3: Saran & Kesan, 4: Logout Placeholder
+
+  // Color scheme (matching RegisterPage)
+  final Color primaryColor = const Color(0xFF2E7D32); // Green
+  final Color secondaryColor = const Color(0xFF388E3C);
+  final Color accentColor = const Color(0xFFFF6B35); // Orange accent
+  final Color backgroundColor = const Color(0xFFF1F8E9);
+  final Color cardColor = Colors.white;
 
   @override
   void initState() {
     super.initState();
-    if (kDebugMode) {
-      print('HomePage initState called');
-    }
     _initServices();
-
-    // Load products after frame
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (kDebugMode) {
-        print('About to fetch products');
-      }
-      final productProvider = Provider.of<ProductProvider>(
+      Provider.of<ProductProvider>(
         context,
         listen: false,
-      );
-      productProvider.fetchProducts().catchError((error) {
-        if (kDebugMode) {
-          print('Error fetching products: $error');
-        }
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Error loading products: $error'),
-              backgroundColor: Colors.red,
-            ),
-          );
-        }
-      });
+      ).fetchProducts(category: 'groceries');
     });
   }
 
   Future<void> _initServices() async {
     try {
-      if (kDebugMode) {
-        print('Initializing services...');
-      }
-
       if (!Hive.isBoxOpen('userBox')) {
         await Hive.openBox<UserModel>('userBox');
       }
@@ -100,18 +86,14 @@ class _HomePageState extends State<HomePage> {
 
       _updateNotificationCount();
 
-      if (mounted) {
-        setState(() {
-          _servicesInitialized = true;
-        });
-      }
-
-      if (kDebugMode) {
-        print('Services initialized successfully');
-      }
+      setState(() {
+        _servicesInitialized = true;
+      });
     } catch (e) {
       if (kDebugMode) {
-        print('Error initializing services: $e');
+        print(
+          'Error initializing services or opening Hive boxes in HomePage: $e',
+        );
       }
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -120,10 +102,6 @@ class _HomePageState extends State<HomePage> {
             backgroundColor: Colors.red,
           ),
         );
-        // Set services as initialized even if there's an error to prevent infinite loading
-        setState(() {
-          _servicesInitialized = true;
-        });
       }
     }
   }
@@ -147,11 +125,9 @@ class _HomePageState extends State<HomePage> {
   void _updateNotificationCount() {
     if (_servicesInitialized) {
       final count = _getUnreadCountForUser(widget.user.username);
-      if (mounted) {
-        setState(() {
-          _notificationCount = count;
-        });
-      }
+      setState(() {
+        _notificationCount = count;
+      });
     }
   }
 
@@ -296,351 +272,145 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  final Color primaryColor = const Color(0xFF4E342E);
-  final Color accentColor = const Color(0xFFFF7043);
+  double priceAfterDiscount(ProductModel product) {
+    return product.price * (1 - product.discountPercentage / 100);
+  }
 
-  @override
-  Widget build(BuildContext context) {
-    if (kDebugMode) {
-      print('HomePage build called');
-    }
+  // --- Widgets for each tab ---
 
-    return Scaffold(
-      appBar: AppBar(
-        backgroundColor: primaryColor,
-        title: Text(
-          "Home",
-          style: GoogleFonts.poppins(
-            fontWeight: FontWeight.w600,
-            fontSize: 22,
-            color: Colors.white,
-          ),
-        ),
-        actions: [
-          // Tombol Notifikasi
-          Stack(
-            children: [
-              IconButton(
-                icon: const Icon(Icons.notifications),
-                color: Colors.white,
-                tooltip: "Notifikasi",
-                onPressed: () async {
-                  if (_servicesInitialized) {
-                    await Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) =>
-                            NotificationPage(currentUser: widget.user),
-                      ),
-                    );
-                    _updateNotificationCount();
-                  }
-                },
-              ),
-              if (_notificationCount > 0)
-                Positioned(
-                  right: 5,
-                  top: 5,
-                  child: Container(
-                    padding: const EdgeInsets.all(2),
-                    decoration: BoxDecoration(
-                      color: Colors.red,
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    constraints: const BoxConstraints(
-                      minWidth: 16,
-                      minHeight: 16,
-                    ),
-                    child: Text(
-                      '$_notificationCount',
-                      style: const TextStyle(color: Colors.white, fontSize: 10),
-                      textAlign: TextAlign.center,
-                    ),
-                  ),
-                ),
-            ],
-          ),
-          // Tombol Favorite
-          IconButton(
-            icon: const Icon(Icons.favorite),
-            color: Colors.white,
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) =>
-                      FavoritePage(favoriteProducts: favoriteProducts),
-                ),
-              ).then((_) => setState(() {}));
-            },
-          ),
-          // Tombol Cart
-          IconButton(
-            icon: const Icon(Icons.shopping_cart),
-            color: Colors.white,
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => CartPage(
-                    cartItems: cartItems,
-                    onRemoveFromCart: _removeFromCart,
-                    onQuantityChanged: _changeQuantity,
-                  ),
-                ),
-              ).then((_) => setState(() {}));
-            },
-          ),
-          // Tombol Profile
-          IconButton(
-            icon: const Icon(Icons.person),
-            color: Colors.white,
-            tooltip: "Profil",
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => ProfilePage(currentUser: widget.user),
-                ),
-              );
-            },
-          ),
-          // Tombol Logout
-          IconButton(
-            icon: const Icon(Icons.logout),
-            color: Colors.white,
-            onPressed: _logout,
-          ),
-          const SizedBox(width: 12),
-        ],
-      ),
-      body: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            color: primaryColor,
-            width: double.infinity,
-            padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
-            child: Text(
-              "Selamat datang, ${widget.user.username}!",
-              style: GoogleFonts.poppins(
-                color: Colors.white,
-                fontWeight: FontWeight.w600,
-                fontSize: 20,
-              ),
+  Widget _buildHomeTab() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          color: primaryColor,
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
+          child: Text(
+            "Selamat datang, ${widget.user.username}!",
+            style: GoogleFonts.poppins(
+              color: Colors.white,
+              fontWeight: FontWeight.w600,
+              fontSize: 20,
             ),
           ),
-          Expanded(
-            child: Consumer<ProductProvider>(
-              builder: (context, productProvider, child) {
-                if (kDebugMode) {
-                  print('Consumer builder called');
-                  print('isLoading: ${productProvider.isLoading}');
-                  print('errorMessage: ${productProvider.errorMessage}');
-                  print('products length: ${productProvider.products.length}');
-                }
+        ),
+        Expanded(
+          child: Consumer<ProductProvider>(
+            builder: (context, productProvider, child) {
+              if (productProvider.isLoading) {
+                return const Center(child: CircularProgressIndicator());
+              }
 
-                // Jika masih loading
-                if (productProvider.isLoading) {
-                  return const Center(
+              if (productProvider.errorMessage != null) {
+                return Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(16.0),
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        CircularProgressIndicator(),
-                        SizedBox(height: 16),
-                        Text('Memuat produk...'),
-                      ],
-                    ),
-                  );
-                }
-
-                // Jika ada error
-                if (productProvider.errorMessage != null) {
-                  return Center(
-                    child: Padding(
-                      padding: const EdgeInsets.all(16.0),
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(
-                            Icons.error_outline,
-                            size: 64,
-                            color: Colors.red,
-                          ),
-                          const SizedBox(height: 16),
-                          Text(
-                            'Terjadi kesalahan:',
-                            style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            productProvider.errorMessage!,
-                            textAlign: TextAlign.center,
-                            style: const TextStyle(
-                              color: Colors.red,
-                              fontSize: 16,
-                            ),
-                          ),
-                          const SizedBox(height: 16),
-                          ElevatedButton(
-                            onPressed: () {
-                              if (kDebugMode) {
-                                print('Retry button pressed');
-                              }
-                              productProvider.clearErrorMessage();
-                              productProvider.fetchProducts();
-                            },
-                            child: const Text('Coba Lagi'),
-                          ),
-                          const SizedBox(height: 8),
-                          TextButton(
-                            onPressed: () {
-                              // Show debug info
-                              showDialog(
-                                context: context,
-                                builder: (context) => AlertDialog(
-                                  title: Text('Debug Info'),
-                                  content: Text(
-                                    'Error: ${productProvider.errorMessage}\n'
-                                    'Services Initialized: $_servicesInitialized\n'
-                                    'User: ${widget.user.username}',
-                                  ),
-                                  actions: [
-                                    TextButton(
-                                      onPressed: () => Navigator.pop(context),
-                                      child: Text('OK'),
-                                    ),
-                                  ],
-                                ),
-                              );
-                            },
-                            child: Text('Debug Info'),
-                          ),
-                        ],
-                      ),
-                    ),
-                  );
-                }
-
-                // Jika tidak ada produk
-                if (productProvider.products.isEmpty) {
-                  return Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          Icons.inventory_2_outlined,
-                          size: 64,
-                          color: Colors.grey,
-                        ),
-                        const SizedBox(height: 16),
                         Text(
-                          'Tidak ada produk ditemukan',
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          'Belum ada produk yang tersedia saat ini',
+                          productProvider.errorMessage!,
                           textAlign: TextAlign.center,
-                          style: TextStyle(color: Colors.grey[600]),
+                          style: const TextStyle(
+                            color: Colors.red,
+                            fontSize: 16,
+                          ),
                         ),
-                        const SizedBox(height: 16),
+                        const SizedBox(height: 10),
                         ElevatedButton(
                           onPressed: () {
-                            productProvider.fetchProducts();
+                            productProvider.fetchProducts(
+                              category: 'groceries',
+                            );
+                            productProvider.clearErrorMessage();
                           },
-                          child: const Text('Refresh'),
+                          child: const Text('Coba Lagi'),
                         ),
                       ],
                     ),
+                  ),
+                );
+              }
+
+              if (productProvider.allProducts.isEmpty) {
+                return const Center(child: Text('Tidak ada produk ditemukan.'));
+              }
+
+              return GridView.builder(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 12,
+                ),
+                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 2,
+                  mainAxisSpacing: 14,
+                  crossAxisSpacing: 14,
+                  // Menggunakan childAspectRatio untuk memberikan kontrol rasio
+                  // Ini akan membuat lebar item grid menentukan tingginya berdasarkan rasio.
+                  childAspectRatio:
+                      0.70, // Pertahankan rasio aspek untuk item grid
+                ),
+                itemCount: productProvider.allProducts.length,
+                itemBuilder: (context, index) {
+                  final product = productProvider.allProducts[index];
+                  final isProductFavorite = favoriteProducts.any(
+                    (favProd) => favProd.id == product.id,
                   );
-                }
 
-                // Menampilkan grid produk
-                return GridView.builder(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 12,
-                  ),
-                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: 2,
-                    mainAxisSpacing: 14,
-                    crossAxisSpacing: 14,
-                    childAspectRatio: 0.70,
-                  ),
-                  itemCount: productProvider.products.length,
-                  itemBuilder: (context, index) {
-                    final product = productProvider.products[index];
-                    final isProductFavorite = favoriteProducts.contains(
-                      product,
-                    );
-
-                    return Card(
-                      elevation: 6,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(18),
-                      ),
-                      shadowColor: Colors.black45,
-                      clipBehavior: Clip.antiAlias,
-                      child: InkWell(
-                        onTap: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => DetailPage(
-                                product: product,
-                                onAddToCart: _addToCart,
-                                onAddToFavorite: _addToFavorites,
-                                currentUser: widget.user,
-                                isSeller: widget.user.roles.contains('seller'),
-                                isInitialFavorite: isProductFavorite,
-                              ),
+                  return Card(
+                    elevation: 6,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(18),
+                    ),
+                    shadowColor: Colors.black45,
+                    clipBehavior: Clip
+                        .antiAlias, // Penting untuk menggunting konten di sudut
+                    child: InkWell(
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => DetailPage(
+                              product: product,
+                              onAddToCart: _addToCart,
+                              onAddToFavorite: _addToFavorites,
+                              currentUser: widget.user,
+                              isSeller: widget.user.roles.contains('seller'),
+                              isInitialFavorite: isProductFavorite,
                             ),
-                          ).then((_) {
-                            productProvider.fetchProducts();
-                            setState(() {});
-                          });
-                        },
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Stack(
+                          ),
+                        ).then((_) {
+                          setState(() {});
+                        });
+                      },
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // FIXED HEIGHT FOR IMAGE CONTAINER TO CONTROL SPACE
+                          // This is a common workaround for stubborn image overflows in grids.
+                          // It gives the image a fixed height within the card,
+                          // regardless of its original aspect ratio, and then crops with BoxFit.cover.
+                          Container(
+                            height:
+                                140, // Adjust this height as needed to fit your images without overflow
+                            child: Stack(
                               children: [
-                                AspectRatio(
-                                  aspectRatio: 1.2,
+                                ClipRRect(
+                                  borderRadius: const BorderRadius.vertical(
+                                    top: Radius.circular(18),
+                                  ),
                                   child: Image.network(
                                     product.thumbnail,
-                                    fit: BoxFit.cover,
-                                    width: double.infinity,
-                                    loadingBuilder: (context, child, loadingProgress) {
-                                      if (loadingProgress == null) return child;
-                                      return Container(
-                                        color: Colors.grey[300],
-                                        child: Center(
-                                          child: CircularProgressIndicator(
-                                            value:
-                                                loadingProgress
-                                                        .expectedTotalBytes !=
-                                                    null
-                                                ? loadingProgress
-                                                          .cumulativeBytesLoaded /
-                                                      loadingProgress
-                                                          .expectedTotalBytes!
-                                                : null,
-                                          ),
-                                        ),
-                                      );
-                                    },
+                                    fit: BoxFit
+                                        .cover, // Image covers the space, cropping if needed
+                                    width: double
+                                        .infinity, // Take full width of its parent (Container)
                                     errorBuilder:
                                         (context, error, stackTrace) =>
                                             Container(
                                               color: Colors.grey[300],
+                                              alignment: Alignment.center,
                                               child: const Icon(
                                                 Icons.broken_image,
                                                 size: 40,
@@ -668,14 +438,14 @@ class _HomePageState extends State<HomePage> {
                                       const SizedBox(height: 8),
                                       _buildIconButton(
                                         icon: Icons.add_shopping_cart,
-                                        color: product.stock > 0
-                                            ? Colors.white
-                                            : Colors.grey,
+                                        color: Colors.white,
                                         onPressed: product.stock > 0
-                                            ? () => _showQuantityDialogWithAdd(
-                                                context,
-                                                product,
-                                              )
+                                            ? () {
+                                                _showQuantityDialogWithAdd(
+                                                  context,
+                                                  product,
+                                                );
+                                              }
                                             : null,
                                       ),
                                     ],
@@ -683,13 +453,18 @@ class _HomePageState extends State<HomePage> {
                                 ),
                               ],
                             ),
-                            Padding(
+                          ),
+                          Expanded(
+                            // Text details take remaining space
+                            child: Padding(
                               padding: const EdgeInsets.symmetric(
                                 horizontal: 8,
                                 vertical: 6,
                               ),
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
                                 children: [
                                   Text(
                                     product.title,
@@ -700,69 +475,243 @@ class _HomePageState extends State<HomePage> {
                                       fontSize: 14,
                                     ),
                                   ),
-                                  const SizedBox(height: 2),
-                                  Text(
-                                    product.category,
-                                    style: GoogleFonts.poppins(
-                                      color: Colors.grey[700],
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.w500,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    "\$${product.finalPrice.toStringAsFixed(2)} USD",
-                                    style: GoogleFonts.poppins(
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 16,
-                                      color: Colors.green[800],
-                                    ),
-                                  ),
-                                  const SizedBox(height: 4),
-                                  Row(
+                                  Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
                                     children: [
-                                      Icon(
-                                        Icons.star,
-                                        color: Colors.amber.shade600,
-                                        size: 14,
-                                      ),
-                                      const SizedBox(width: 4),
+                                      const SizedBox(height: 2),
                                       Text(
-                                        product.rating.toStringAsFixed(1),
+                                        product.category,
                                         style: GoogleFonts.poppins(
+                                          color: Colors.grey[700],
                                           fontSize: 12,
-                                          fontWeight: FontWeight.w600,
+                                          fontWeight: FontWeight.w500,
                                         ),
+                                      ),
+                                      const SizedBox(height: 4),
+                                      Text(
+                                        "\$${product.finalPrice.toStringAsFixed(2)} USD",
+                                        style: GoogleFonts.poppins(
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 16,
+                                          color: Colors.green[800],
+                                        ),
+                                      ),
+                                      const SizedBox(height: 4),
+                                      Row(
+                                        children: [
+                                          Icon(
+                                            Icons.star,
+                                            color: Colors.amber.shade600,
+                                            size: 14,
+                                          ),
+                                          const SizedBox(width: 4),
+                                          Text(
+                                            product.rating.toStringAsFixed(1),
+                                            style: GoogleFonts.poppins(
+                                              fontSize: 12,
+                                              fontWeight: FontWeight.w600,
+                                            ),
+                                          ),
+                                        ],
                                       ),
                                     ],
                                   ),
                                 ],
                               ),
                             ),
-                          ],
-                        ),
+                          ),
+                        ],
                       ),
-                    );
+                    ),
+                  );
+                },
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
+  // --- Main Build Method ---
+  @override
+  Widget build(BuildContext context) {
+    final List<Widget> _pages = [
+      _buildHomeTab(),
+      ProfilePage(currentUser: widget.user, onLogout: _logout),
+      MyPersonalProfilePage(),
+      SaranKesanPage(),
+    ];
+
+    String appBarTitle;
+    switch (_selectedIndex) {
+      case 0:
+        appBarTitle = "Home";
+        break;
+      case 1:
+        appBarTitle = "Profil Pengguna";
+        break;
+      case 2:
+        appBarTitle = "Profil Pribadi";
+        break;
+      case 3:
+        appBarTitle = "Saran dan Kesan";
+        break;
+      default:
+        appBarTitle = "Home";
+    }
+
+    return Scaffold(
+      backgroundColor: backgroundColor,
+      appBar: AppBar(
+        backgroundColor: primaryColor,
+        title: Text(
+          appBarTitle,
+          style: GoogleFonts.poppins(
+            fontWeight: FontWeight.w600,
+            fontSize: 22,
+            color: Colors.white,
+          ),
+        ),
+        actions: [
+          if (_selectedIndex == 0) ...[
+            Stack(
+              children: [
+                IconButton(
+                  icon: const Icon(Icons.notifications),
+                  color: Colors.white,
+                  tooltip: "Notifikasi",
+                  onPressed: () async {
+                    if (_servicesInitialized) {
+                      await Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) =>
+                              NotificationPage(currentUser: widget.user),
+                        ),
+                      );
+                      _updateNotificationCount();
+                    }
                   },
-                );
+                ),
+                if (_notificationCount > 0)
+                  Positioned(
+                    right: 5,
+                    top: 5,
+                    child: Container(
+                      padding: const EdgeInsets.all(2),
+                      decoration: BoxDecoration(
+                        color: Colors.red,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      constraints: const BoxConstraints(
+                        minWidth: 16,
+                        minHeight: 16,
+                      ),
+                      child: Text(
+                        '$_notificationCount',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 10,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+            IconButton(
+              icon: const Icon(Icons.favorite),
+              color: Colors.white,
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) =>
+                        FavoritePage(favoriteProducts: favoriteProducts),
+                  ),
+                ).then((_) => setState(() {}));
               },
             ),
+            IconButton(
+              icon: const Icon(Icons.shopping_cart),
+              color: Colors.white,
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => CartPage(
+                      cartItems: cartItems,
+                      onRemoveFromCart: _removeFromCart,
+                      onQuantityChanged: _changeQuantity,
+                    ),
+                  ),
+                ).then((_) => setState(() {}));
+              },
+            ),
+          ],
+        ],
+      ),
+      body: IndexedStack(index: _selectedIndex, children: _pages),
+      bottomNavigationBar: BottomNavigationBar(
+        currentIndex: _selectedIndex,
+        onTap: (index) {
+          if (index == 4) {
+            _logout();
+          } else {
+            setState(() {
+              _selectedIndex = index;
+            });
+          }
+        },
+        selectedItemColor: primaryColor,
+        unselectedItemColor: Colors.grey,
+        selectedLabelStyle: GoogleFonts.poppins(fontWeight: FontWeight.w600),
+        unselectedLabelStyle: GoogleFonts.poppins(fontWeight: FontWeight.w500),
+        items: <BottomNavigationBarItem>[
+          const BottomNavigationBarItem(
+            icon: Icon(Icons.home_rounded),
+            label: 'Home',
+          ),
+          const BottomNavigationBarItem(
+            icon: Icon(Icons.person),
+            label: 'User Profil',
+          ),
+          BottomNavigationBarItem(
+            icon: CircleAvatar(
+              radius: 12,
+              backgroundColor: Colors.grey[200],
+              backgroundImage: const AssetImage('assets/foto_saya.jpg'),
+              child: const SizedBox.shrink(),
+            ),
+            label: 'My Profil',
+          ),
+          const BottomNavigationBarItem(
+            icon: Icon(Icons.feedback_rounded),
+            label: 'Saran & Kesan',
+          ),
+          const BottomNavigationBarItem(
+            icon: Icon(Icons.logout_rounded),
+            label: 'Logout',
           ),
         ],
       ),
-      floatingActionButton: widget.user.roles.contains('seller')
+      floatingActionButton:
+          widget.user.roles.contains('seller') && _selectedIndex == 0
           ? FloatingActionButton(
               onPressed: () {
                 Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (context) => const AddProductPage(),
+                    builder: (context) =>
+                        AddProductPage(currentUser: widget.user),
                   ),
                 ).then((_) {
                   Provider.of<ProductProvider>(
                     context,
                     listen: false,
-                  ).fetchProducts();
+                  ).fetchProducts(category: 'groceries');
                 });
               },
               child: const Icon(Icons.add),

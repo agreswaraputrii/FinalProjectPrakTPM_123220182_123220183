@@ -5,7 +5,7 @@ import 'package:hive/hive.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:geocoding/geocoding.dart';
 
-import '../pages/cart_page.dart';
+import '../pages/cart_page.dart'; // Asumsi CartItem ada di sini
 import 'success_page.dart';
 import '../models/order_model.dart';
 import '../models/user_model.dart';
@@ -37,11 +37,9 @@ class _CheckoutPageState extends State<CheckoutPage> {
   String? selectedPayment;
   String selectedCurrency = 'USD';
 
-  OrderService? _orderService;
-  NotificationService? _notificationService;
-  UserModel? _currentUser;
-  bool _isLoading = false;
-  bool _servicesInitialized = false;
+  late OrderService _orderService;
+  late NotificationService _notificationService;
+  late UserModel? _currentUser; // Untuk menyimpan user yang sedang login
 
   final Map<String, double> courierPrices = {
     'JNE': 5.0,
@@ -65,59 +63,28 @@ class _CheckoutPageState extends State<CheckoutPage> {
   }
 
   Future<void> _initServices() async {
-    try {
-      setState(() {
-        _isLoading = true;
-      });
-
-      // Pastikan semua Hive Box yang diperlukan sudah terbuka di main.dart.
-      // Kita hanya akan mencoba mengaksesnya di sini.
-      if (!Hive.isBoxOpen('orderBox')) {
-        // Jika belum terbuka (misalnya, di dev hot reload), buka secara eksplisit
-        await Hive.openBox<OrderModel>('orderBox');
-      }
-      if (!Hive.isBoxOpen('notificationBox')) {
-        await Hive.openBox<NotificationModel>('notificationBox');
-      }
-      if (!Hive.isBoxOpen('userBox')) {
-        await Hive.openBox<UserModel>('userBox');
-      }
-
-      final userBox = Hive.box<UserModel>('userBox');
-      final authService = AuthService(userBox);
-      _currentUser = await authService.getLoggedInUser();
-
-      if (_currentUser == null) {
-        throw Exception('User tidak ditemukan. Silakan login kembali.');
-      }
-
-      // Inisialisasi service setelah memastikan box terbuka
-      _orderService = OrderService(Hive.box<OrderModel>('orderBox'), userBox);
-      _notificationService = NotificationService(
-        Hive.box<NotificationModel>('notificationBox'),
-      );
-
-      _nameController.text = _currentUser!.fullName;
-
-      setState(() {
-        _servicesInitialized = true;
-        _isLoading = false;
-      });
-    } catch (e) {
-      setState(() {
-        _isLoading = false;
-      });
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error saat memuat data: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-      print('Error initializing services: $e');
+    // Pastikan semua Hive Box yang diperlukan sudah terbuka
+    if (!Hive.isBoxOpen('orderBox')) {
+      await Hive.openBox<OrderModel>('orderBox');
     }
+    if (!Hive.isBoxOpen('notificationBox')) {
+      await Hive.openBox<NotificationModel>('notificationBox');
+    }
+    // Asumsi userBox sudah terbuka di main.dart
+    final userBox = Hive.box<UserModel>('userBox');
+    final authService = AuthService(userBox);
+    _currentUser = await authService.getLoggedInUser();
+
+    _orderService = OrderService(Hive.box<OrderModel>('orderBox'), userBox);
+    _notificationService = NotificationService(Hive.box<NotificationModel>('notificationBox'));
+
+    // Jika user punya nama dan alamat default, bisa diisi otomatis
+    if (_currentUser != null) {
+      _nameController.text = _currentUser!.fullName;
+      // Jika UserModel Anda memiliki field alamat:
+      // _addressController.text = _currentUser!.address;
+    }
+    setState(() {}); // Untuk refresh UI setelah data user terload
   }
 
   @override
@@ -151,106 +118,109 @@ class _CheckoutPageState extends State<CheckoutPage> {
   }
 
   Future<void> _getCurrentLocationAndFillAddress() async {
-    try {
-      bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
-      if (!serviceEnabled) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Layanan lokasi tidak aktif. Mohon aktifkan GPS.'),
-              backgroundColor: Colors.red,
-            ),
-          );
-        }
-        return;
+    // Cek apakah layanan lokasi aktif
+    bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+    if (!serviceEnabled) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Layanan lokasi tidak aktif. Mohon aktifkan GPS.'),
+            backgroundColor: Colors.red,
+          ),
+        );
       }
+      return;
+    }
 
-      LocationPermission permission = await Geolocator.checkPermission();
+    // Request permission
+    LocationPermission permission = await Geolocator.checkPermission();
+    if (permission == LocationPermission.denied) {
+      permission = await Geolocator.requestPermission();
       if (permission == LocationPermission.denied) {
-        permission = await Geolocator.requestPermission();
-        if (permission == LocationPermission.denied) {
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Izin lokasi ditolak'),
-                backgroundColor: Colors.red,
-              ),
-            );
-          }
-          return;
-        }
-      }
-
-      if (permission == LocationPermission.deniedForever) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text(
-                'Izin lokasi ditolak permanen. Mohon aktifkan di pengaturan aplikasi.',
-              ),
+              content: Text('Izin lokasi ditolak'),
               backgroundColor: Colors.red,
             ),
           );
         }
         return;
       }
+    }
 
+    if (permission == LocationPermission.deniedForever) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Izin lokasi ditolak permanen. Mohon aktifkan di pengaturan aplikasi.',
+            ),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+      return;
+    }
+
+    try {
+      // Tampilkan loading indicator
       if (mounted) {
         showDialog(
           context: context,
           barrierDismissible: false,
-          builder: (context) => const AlertDialog(
-            content: Row(
-              children: [
-                CircularProgressIndicator(),
-                SizedBox(width: 16),
-                Text('Mendapatkan lokasi...'),
-              ],
-            ),
-          ),
+          builder: (context) => const Center(child: CircularProgressIndicator()),
         );
       }
 
+      // Dapatkan posisi saat ini
       Position position = await Geolocator.getCurrentPosition(
         desiredAccuracy: LocationAccuracy.high,
-        timeLimit: const Duration(seconds: 15),
+        timeLimit: const Duration(seconds: 10), // Timeout 10 detik
       );
 
+      // Konversi koordinat ke alamat
       List<Placemark> placemarks = await placemarkFromCoordinates(
         position.latitude,
         position.longitude,
       );
 
-      if (mounted && Navigator.canPop(context)) {
+      // Tutup loading dialog
+      if (mounted) {
         Navigator.of(context).pop();
       }
 
       if (placemarks.isNotEmpty) {
         final place = placemarks.first;
-        List<String> addressParts = [];
 
+        // Format alamat yang lebih detail
+        String address = '';
         if (place.street != null && place.street!.isNotEmpty) {
-          addressParts.add(place.street!);
+          address += place.street!;
         }
         if (place.subLocality != null && place.subLocality!.isNotEmpty) {
-          addressParts.add(place.subLocality!);
+          address += address.isEmpty
+              ? place.subLocality!
+              : ', ${place.subLocality!}';
         }
         if (place.locality != null && place.locality!.isNotEmpty) {
-          addressParts.add(place.locality!);
+          address += address.isEmpty ? place.locality! : ', ${place.locality!}';
         }
         if (place.subAdministrativeArea != null &&
             place.subAdministrativeArea!.isNotEmpty) {
-          addressParts.add(place.subAdministrativeArea!);
+          address += address.isEmpty
+              ? place.subAdministrativeArea!
+              : ', ${place.subAdministrativeArea!}';
         }
         if (place.administrativeArea != null &&
             place.administrativeArea!.isNotEmpty) {
-          addressParts.add(place.administrativeArea!);
+          address += address.isEmpty
+              ? place.administrativeArea!
+              : ', ${place.administrativeArea!}';
         }
         if (place.country != null && place.country!.isNotEmpty) {
-          addressParts.add(place.country!);
+          address += address.isEmpty ? place.country! : ', ${place.country!}';
         }
-
-        String address = addressParts.join(', ');
 
         setState(() {
           _addressController.text = address.isEmpty
@@ -277,6 +247,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
         }
       }
     } catch (e) {
+      // Tutup loading dialog jika masih terbuka
       if (mounted && Navigator.canPop(context)) {
         Navigator.of(context).pop();
       }
@@ -294,48 +265,18 @@ class _CheckoutPageState extends State<CheckoutPage> {
           SnackBar(content: Text(errorMessage), backgroundColor: Colors.red),
         );
       }
-      print('Error getting location: $e');
+      print('Error getting location: $e'); // Untuk debugging
     }
   }
 
   void _checkout() async {
-    if (!_formKey.currentState!.validate()) {
+    if (!_formKey.currentState!.validate() ||
+        selectedCourier == null ||
+        selectedPayment == null ||
+        _currentUser == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Mohon lengkapi semua field yang diperlukan!'),
-          backgroundColor: Colors.red,
-        ),
-      );
-      return;
-    }
-
-    if (selectedCourier == null || selectedPayment == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Mohon pilih jasa kirim dan metode pembayaran!'),
-          backgroundColor: Colors.red,
-        ),
-      );
-      return;
-    }
-
-    if (!_servicesInitialized ||
-        _currentUser == null ||
-        _orderService == null ||
-        _notificationService == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Services belum siap. Mohon tunggu sebentar.'),
-          backgroundColor: Colors.red,
-        ),
-      );
-      return;
-    }
-
-    if (widget.cartItems.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Keranjang kosong!'),
+          content: Text('Lengkapi semua data dan pastikan Anda login!'),
           backgroundColor: Colors.red,
         ),
       );
@@ -345,35 +286,33 @@ class _CheckoutPageState extends State<CheckoutPage> {
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (context) => const AlertDialog(
-        content: Row(
-          children: [
-            CircularProgressIndicator(),
-            SizedBox(width: 16),
-            Text('Memproses checkout...'),
-          ],
-        ),
-      ),
+      builder: (context) => const Center(child: CircularProgressIndicator()),
     );
 
     try {
+      // 1. Buat OrderProductItem dari CartItem
       List<OrderProductItem> orderItems = widget.cartItems.map((cartItem) {
         return OrderProductItem(
           productId: cartItem.product.id.toString(),
-          productName: cartItem.product.title,
-          productImageUrl: cartItem.product.thumbnail,
+          productName: cartItem.product.title, // **PERBAIKAN: Menggunakan .title**
+          productImageUrl: cartItem.product.thumbnail, // **PERBAIKAN: Menggunakan .thumbnail**
           price: cartItem.product.price.toDouble(),
           discountPercentage: cartItem.product.discountPercentage.toDouble(),
           quantity: cartItem.quantity,
         );
       }).toList();
 
-      String sellerUsernamePlaceholder = 'admin_seller_account';
+      // Placeholder sellerUsername. Sesuaikan jika ProductModel Anda memiliki field seller.
+      // Jika semua produk di keranjang selalu dari 1 seller, Anda bisa set spesifik di sini.
+      // Atau, jika Anda punya daftar products dan tahu seller dari masing-masing product,
+      // Anda bisa membuat multiple orders, 1 order per seller.
+      String sellerUsernamePlaceholder = 'admin_seller_account'; // **PERBAIKAN: Placeholder yang lebih jelas**
 
-      final newOrder = await _orderService!.createOrder(
+      // 2. Buat objek OrderModel baru
+      final newOrder = await _orderService.createOrder(
         customerUsername: _currentUser!.username,
-        customerName: _nameController.text.trim(),
-        customerAddress: _addressController.text.trim(),
+        customerName: _nameController.text,
+        customerAddress: _addressController.text,
         customerPhoneNumber: _currentUser!.phoneNumber,
         items: orderItems,
         subtotalAmount: subtotal,
@@ -382,54 +321,53 @@ class _CheckoutPageState extends State<CheckoutPage> {
         totalAmount: totalUSD,
         paymentMethod: selectedPayment!,
         selectedCurrency: selectedCurrency,
-        sellerUsername: sellerUsernamePlaceholder,
+        sellerUsername: sellerUsernamePlaceholder, // Menggunakan placeholder
       );
 
-      await _notificationService!.addNotification(
+      // 3. Buat Notifikasi untuk Customer (pembayaran berhasil)
+      await _notificationService.addNotification(
         targetUsername: _currentUser!.username,
         type: NotificationType.orderPaid,
         title: 'Pembayaran Berhasil!',
-        body:
-            'Pesanan Anda #${newOrder.orderId.substring(0, 8)} telah berhasil dibayar. Total: $formattedTotal.',
+        body: 'Pesanan Anda #${newOrder.orderId.substring(0, 8)} telah berhasil dibayar. Total: ${formattedTotal}.',
         referenceId: newOrder.orderId,
       );
 
-      if (sellerUsernamePlaceholder != 'admin_seller_account') {
-        await _notificationService!.addNotification(
+      // 4. Buat Notifikasi untuk Seller (pesanan baru masuk)
+      // Hanya kirim notifikasi ke seller jika sellerUsernamePlaceholder valid/bukan default dummy
+      if (sellerUsernamePlaceholder != 'admin_seller_account') { // Sesuaikan kondisi ini
+        await _notificationService.addNotification(
           targetUsername: sellerUsernamePlaceholder,
           type: NotificationType.newOrder,
           title: 'Pesanan Baru Masuk!',
-          body:
-              'Ada pesanan baru dari ${_currentUser!.fullName}. ID Pesanan: #${newOrder.orderId.substring(0, 8)}.',
+          body: 'Ada pesanan baru dari ${_currentUser!.fullName}. ID Pesanan: #${newOrder.orderId.substring(0, 8)}.',
           referenceId: newOrder.orderId,
         );
       }
 
-      if (mounted && Navigator.canPop(context)) {
-        Navigator.of(context).pop();
-      }
 
+      // Tutup loading dialog
       if (mounted) {
+        Navigator.of(context).pop();
+        // Navigasi ke SuccessPage
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(builder: (context) => const SuccessPage()),
         );
-        widget.onCheckoutComplete();
+        widget.onCheckoutComplete(); // Panggil callback
       }
     } catch (e) {
+      // Tutup loading dialog jika ada error
       if (mounted && Navigator.canPop(context)) {
         Navigator.of(context).pop();
       }
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Terjadi kesalahan saat checkout: ${e.toString()}'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-      print('Checkout Error: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Terjadi kesalahan saat checkout: ${e.toString()}'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      print('Checkout Error: $e'); // Untuk debugging
     }
   }
 
@@ -437,52 +375,10 @@ class _CheckoutPageState extends State<CheckoutPage> {
   Widget build(BuildContext context) {
     final themeColor = const Color(0xFF4E342E);
 
-    if (_isLoading) {
-      return Scaffold(
-        appBar: AppBar(
-          backgroundColor: themeColor,
-          title: Text('Checkout', style: GoogleFonts.poppins()),
-        ),
-        body: const Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              CircularProgressIndicator(),
-              SizedBox(height: 16),
-              Text('Memuat data checkout...'),
-            ],
-          ),
-        ),
-      );
-    }
-
-    if (!_servicesInitialized || _currentUser == null) {
-      return Scaffold(
-        appBar: AppBar(
-          backgroundColor: themeColor,
-          title: Text('Checkout', style: GoogleFonts.poppins()),
-        ),
-        body: const Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(Icons.error, size: 64, color: Colors.red),
-              SizedBox(height: 16),
-              Text('Gagal memuat data. Silakan coba lagi.'),
-            ],
-          ),
-        ),
-      );
-    }
-
     return Scaffold(
       appBar: AppBar(
         backgroundColor: themeColor,
-        title: Text(
-          'Checkout',
-          style: GoogleFonts.poppins(color: Colors.white),
-        ),
-        iconTheme: const IconThemeData(color: Colors.white),
+        title: Text('Checkout', style: GoogleFonts.poppins()),
       ),
       body: Padding(
         padding: const EdgeInsets.all(16),
@@ -490,56 +386,19 @@ class _CheckoutPageState extends State<CheckoutPage> {
           key: _formKey,
           child: ListView(
             children: [
-              // Info User
-              Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'Informasi Pembeli',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Text('Username: ${_currentUser!.username}'),
-                      Text('Email: ${_currentUser!.email}'),
-                      Text('Phone: ${_currentUser!.phoneNumber}'),
-                    ],
-                  ),
-                ),
-              ),
-              const SizedBox(height: 16),
-
-              // Form Fields
               TextFormField(
                 controller: _nameController,
-                decoration: const InputDecoration(
-                  labelText: 'Nama Penerima',
-                  border: OutlineInputBorder(),
-                ),
-                validator: (val) => val == null || val.trim().isEmpty
-                    ? 'Nama penerima wajib diisi'
-                    : null,
+                decoration: const InputDecoration(labelText: 'Nama Penerima'),
+                validator: (val) => val!.isEmpty ? 'Wajib diisi' : null,
               ),
               const SizedBox(height: 12),
-
               TextFormField(
                 controller: _addressController,
-                decoration: const InputDecoration(
-                  labelText: 'Alamat Lengkap',
-                  border: OutlineInputBorder(),
-                ),
-                validator: (val) => val == null || val.trim().isEmpty
-                    ? 'Alamat wajib diisi'
-                    : null,
+                decoration: const InputDecoration(labelText: 'Alamat Lengkap'),
+                validator: (val) => val!.isEmpty ? 'Wajib diisi' : null,
                 maxLines: 3,
               ),
               const SizedBox(height: 8),
-
               Align(
                 alignment: Alignment.centerLeft,
                 child: TextButton.icon(
@@ -549,13 +408,8 @@ class _CheckoutPageState extends State<CheckoutPage> {
                 ),
               ),
               const SizedBox(height: 16),
-
               DropdownButtonFormField<String>(
                 value: selectedCourier,
-                decoration: const InputDecoration(
-                  labelText: 'Jasa Kirim',
-                  border: OutlineInputBorder(),
-                ),
                 hint: const Text('Pilih Jasa Kirim'),
                 items: courierPrices.keys.map((courier) {
                   return DropdownMenuItem(
@@ -567,13 +421,8 @@ class _CheckoutPageState extends State<CheckoutPage> {
                 validator: (val) => val == null ? 'Pilih jasa kirim' : null,
               ),
               const SizedBox(height: 16),
-
               DropdownButtonFormField<String>(
                 value: selectedPayment,
-                decoration: const InputDecoration(
-                  labelText: 'Metode Pembayaran',
-                  border: OutlineInputBorder(),
-                ),
                 hint: const Text('Pilih Metode Pembayaran'),
                 items: paymentMethods.map((method) {
                   return DropdownMenuItem(value: method, child: Text(method));
@@ -583,13 +432,9 @@ class _CheckoutPageState extends State<CheckoutPage> {
                     val == null ? 'Pilih metode pembayaran' : null,
               ),
               const SizedBox(height: 16),
-
               DropdownButtonFormField<String>(
                 value: selectedCurrency,
-                decoration: const InputDecoration(
-                  labelText: 'Mata Uang',
-                  border: OutlineInputBorder(),
-                ),
+                decoration: const InputDecoration(labelText: 'Mata Uang'),
                 items: currencyRates.keys.map((currency) {
                   return DropdownMenuItem(
                     value: currency,
@@ -599,56 +444,25 @@ class _CheckoutPageState extends State<CheckoutPage> {
                 onChanged: (val) => setState(() => selectedCurrency = val!),
               ),
               const SizedBox(height: 24),
-
-              // Order Summary
-              Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'Ringkasan Pesanan',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Text('Subtotal: \$${subtotal.toStringAsFixed(2)}'),
-                      Text('Ongkir: \$${courierCost.toStringAsFixed(2)}'),
-                      const Divider(),
-                      Text(
-                        'Total: $formattedTotal',
-                        style: GoogleFonts.poppins(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.green[800],
-                        ),
-                      ),
-                    ],
-                  ),
+              Text(
+                'Total: $formattedTotal',
+                style: GoogleFonts.poppins(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.green[800],
                 ),
               ),
               const SizedBox(height: 24),
-
               ElevatedButton(
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.deepOrange,
-                  foregroundColor: Colors.white,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  padding: const EdgeInsets.symmetric(vertical: 14),
                 ),
                 onPressed: _checkout,
-                child: Text(
-                  'Bayar Sekarang',
-                  style: GoogleFonts.poppins(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
+                child: Text('Bayar Sekarang', style: GoogleFonts.poppins()),
               ),
             ],
           ),
