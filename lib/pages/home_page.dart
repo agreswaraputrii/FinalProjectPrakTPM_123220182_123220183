@@ -4,6 +4,8 @@ import 'package:hive/hive.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter/foundation.dart';
+import 'package:intl/intl.dart'; // Import for date formatting
+import 'dart:async'; // Import for Timer
 
 // Import Models
 import '../models/user_model.dart';
@@ -38,6 +40,9 @@ enum SortOption {
   ratingHighToLow,
 }
 
+// Definisikan TimeZoneOption
+enum TimeZoneOption { wib, wita, wit, london }
+
 class HomePage extends StatefulWidget {
   final UserModel user;
 
@@ -62,11 +67,14 @@ class _HomePageState extends State<HomePage> {
 
   // Search and Sort variables
   final TextEditingController _searchController = TextEditingController();
-  // _searchQuery tidak perlu diinisialisasi di sini karena akan di-set melalui addListener
   String _searchQuery = ''; // Inisialisasi dengan string kosong
   SortOption _currentSortOption = SortOption.none;
-  // _isSearchVisible tidak digunakan dalam implementasi ini, bisa dihapus jika tidak diperlukan.
-  // bool _isSearchVisible = false;
+
+  // Time conversion variables
+  Timer? _timer;
+  DateTime _currentTime = DateTime.now();
+  // Default to WIB
+  TimeZoneOption _selectedTimeZone = TimeZoneOption.wib;
 
   // Color scheme (matching RegisterPage)
   final Color primaryColor = const Color(0xFF2E7D32); // Green
@@ -80,7 +88,6 @@ class _HomePageState extends State<HomePage> {
     super.initState();
     _initServices();
     _searchController.addListener(() {
-      // Panggil setState setiap kali teks berubah untuk memicu rebuild
       setState(() {
         _searchQuery = _searchController.text.toLowerCase();
       });
@@ -91,11 +98,19 @@ class _HomePageState extends State<HomePage> {
         listen: false,
       ).fetchProducts(category: 'groceries');
     });
+
+    // Initialize timer for time conversion
+    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      setState(() {
+        _currentTime = DateTime.now();
+      });
+    });
   }
 
   @override
   void dispose() {
     _searchController.dispose();
+    _timer?.cancel(); // Cancel the timer
     super.dispose();
   }
 
@@ -169,7 +184,6 @@ class _HomePageState extends State<HomePage> {
     // Filter by search query
     if (_searchQuery.isNotEmpty) {
       filteredProducts = filteredProducts.where((product) {
-        // Mengubah title dan category produk menjadi huruf kecil untuk perbandingan
         final productTitleLower = product.title.toLowerCase();
         final productCategoryLower = product.category.toLowerCase();
 
@@ -186,12 +200,10 @@ class _HomePageState extends State<HomePage> {
       case SortOption.priceHighToLow:
         filteredProducts.sort((a, b) => b.finalPrice.compareTo(a.finalPrice));
         break;
-      case SortOption
-          .ratingLowToHigh: // Opsi baru: Rating Terendah ke Tertinggi
+      case SortOption.ratingLowToHigh:
         filteredProducts.sort((a, b) => a.rating.compareTo(b.rating));
         break;
-      case SortOption
-          .ratingHighToLow: // Opsi baru: Rating Tertinggi ke Terendah
+      case SortOption.ratingHighToLow:
         filteredProducts.sort((a, b) => b.rating.compareTo(a.rating));
         break;
       case SortOption.none:
@@ -297,10 +309,9 @@ class _HomePageState extends State<HomePage> {
                   Navigator.pop(context);
                 },
               ),
-              // Opsi baru: Sorting berdasarkan Rating
               ListTile(
                 leading: Icon(
-                  Icons.star_border, // Atau Icons.star_rate_outlined, dll.
+                  Icons.star_border,
                   color: _currentSortOption == SortOption.ratingLowToHigh
                       ? primaryColor
                       : Colors.grey,
@@ -325,7 +336,7 @@ class _HomePageState extends State<HomePage> {
               ),
               ListTile(
                 leading: Icon(
-                  Icons.star, // Atau Icons.star_rate, dll.
+                  Icons.star,
                   color: _currentSortOption == SortOption.ratingHighToLow
                       ? primaryColor
                       : Colors.grey,
@@ -381,10 +392,6 @@ class _HomePageState extends State<HomePage> {
                   icon: Icon(Icons.clear, color: Colors.grey[600]),
                   onPressed: () {
                     _searchController.clear();
-                    // setState dipanggil di addListener, jadi tidak perlu di sini juga
-                    // setState(() {
-                    //   _searchQuery = '';
-                    // });
                   },
                 )
               : null,
@@ -596,7 +603,82 @@ class _HomePageState extends State<HomePage> {
     return product.price * (1 - product.discountPercentage / 100);
   }
 
-  // --- Widgets for each tab ---
+  // New Widget for Time Conversion with Dropdown
+  Widget _buildTimeConversionDropdown() {
+    final formatter = DateFormat('HH:mm:ss');
+    DateTime displayedTime;
+    String timeZoneName;
+
+    // Determine which time to display based on _selectedTimeZone
+    switch (_selectedTimeZone) {
+      case TimeZoneOption.wib:
+        displayedTime = _currentTime.toUtc().add(const Duration(hours: 7));
+        timeZoneName = "WIB";
+        break;
+      case TimeZoneOption.wita:
+        displayedTime = _currentTime.toUtc().add(const Duration(hours: 8));
+        timeZoneName = "WITA";
+        break;
+      case TimeZoneOption.wit:
+        displayedTime = _currentTime.toUtc().add(const Duration(hours: 9));
+        timeZoneName = "WIT";
+        break;
+      case TimeZoneOption.london:
+        // Adjust for BST/GMT if needed (assuming BST for now, UTC+1)
+        displayedTime = _currentTime.toUtc().add(const Duration(hours: 1));
+        timeZoneName = "London";
+        break;
+    }
+
+    return Container(
+      color: secondaryColor,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            '$timeZoneName: ${formatter.format(displayedTime)}',
+            style: GoogleFonts.poppins(
+              color: Colors.white,
+              fontSize: 14,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          DropdownButton<TimeZoneOption>(
+            value: _selectedTimeZone,
+            dropdownColor: secondaryColor, // Dropdown menu background color
+            icon: const Icon(Icons.arrow_drop_down, color: Colors.white),
+            underline: const SizedBox(), // Remove the default underline
+            onChanged: (TimeZoneOption? newValue) {
+              if (newValue != null) {
+                setState(() {
+                  _selectedTimeZone = newValue;
+                });
+              }
+            },
+            items: const <DropdownMenuItem<TimeZoneOption>>[
+              DropdownMenuItem<TimeZoneOption>(
+                value: TimeZoneOption.wib,
+                child: Text('WIB', style: TextStyle(color: Colors.white)),
+              ),
+              DropdownMenuItem<TimeZoneOption>(
+                value: TimeZoneOption.wita,
+                child: Text('WITA', style: TextStyle(color: Colors.white)),
+              ),
+              DropdownMenuItem<TimeZoneOption>(
+                value: TimeZoneOption.wit,
+                child: Text('WIT', style: TextStyle(color: Colors.white)),
+              ),
+              DropdownMenuItem<TimeZoneOption>(
+                value: TimeZoneOption.london,
+                child: Text('London', style: TextStyle(color: Colors.white)),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -786,7 +868,6 @@ class _HomePageState extends State<HomePage> {
   }
 
   // --- Widgets for each tab ---
-  // Pastikan _buildHomeTab() ada di dalam class _HomePageState
   Widget _buildHomeTab() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -804,6 +885,8 @@ class _HomePageState extends State<HomePage> {
             ),
           ),
         ),
+        // Add the dropdown widget here
+        _buildTimeConversionDropdown(),
         _buildSearchBar(),
         _buildFilterSortBar(),
         Expanded(
@@ -872,10 +955,6 @@ class _HomePageState extends State<HomePage> {
                       ElevatedButton(
                         onPressed: () {
                           _searchController.clear();
-                          // setState dipanggil di addListener, jadi tidak perlu di sini juga
-                          // setState(() {
-                          //   _searchQuery = '';
-                          // });
                         },
                         child: const Text('Hapus Filter'),
                       ),
