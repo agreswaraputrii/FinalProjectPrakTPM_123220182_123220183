@@ -1,31 +1,31 @@
 // lib/pages/detail_page.dart
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:provider/provider.dart'; // Import Provider
+import 'package:provider/provider.dart';
 
 import '../models/product_model.dart';
-import '../models/user_model.dart'; // Import UserModel
-import '../providers/product_provider.dart'; // Import ProductProvider
-import '../pages/edit_product_page.dart'; // Import EditProductPage
-import '../pages/checkout_page.dart'; // <-- IMPORT CHECKOUT PAGE
-import '../pages/cart_page.dart'; // <-- IMPORT CARTITEM
+import '../models/user_model.dart';
+import '../providers/product_provider.dart';
+import '../pages/edit_product_page.dart';
+import '../pages/checkout_page.dart';
+import '../pages/cart_page.dart';
 
 class DetailPage extends StatefulWidget {
   final ProductModel product;
   final void Function(ProductModel, int) onAddToCart;
   final void Function(ProductModel, bool) onAddToFavorite;
-  final UserModel currentUser; // Menerima user yang sedang login
-  final bool isSeller; // Menerima status seller (dari HomePage)
-  final bool isInitialFavorite; // Menerima status favorit awal dari HomePage
+  final UserModel currentUser;
+  final bool isSeller;
+  final bool isInitialFavorite;
 
   const DetailPage({
     super.key,
     required this.product,
     required this.onAddToCart,
     required this.onAddToFavorite,
-    required this.currentUser, // Pastikan ini diterima
-    required this.isSeller, // Pastikan ini diterima
-    this.isInitialFavorite = false, // Nilai default jika tidak disediakan
+    required this.currentUser,
+    required this.isSeller,
+    this.isInitialFavorite = false,
   });
 
   @override
@@ -33,13 +33,13 @@ class DetailPage extends StatefulWidget {
 }
 
 class _DetailPageState extends State<DetailPage> {
-  int quantity = 1; // default quantity
+  late int quantity;
   late bool isFavorite;
 
   @override
   void initState() {
     super.initState();
-    isFavorite = widget.isInitialFavorite; // Inisialisasi dari parameter
+    isFavorite = widget.isInitialFavorite;
     quantity = widget.product.minimumOrderQuantity > 0
         ? widget.product.minimumOrderQuantity
         : 1;
@@ -49,9 +49,7 @@ class _DetailPageState extends State<DetailPage> {
     setState(() {
       isFavorite = !isFavorite;
     });
-
     widget.onAddToFavorite(widget.product, isFavorite);
-
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(
@@ -59,14 +57,15 @@ class _DetailPageState extends State<DetailPage> {
               ? 'Produk ditambahkan ke favorit'
               : 'Produk dihapus dari favorit',
         ),
-        duration: const Duration(seconds: 2),
       ),
     );
   }
 
   void incrementQuantity() {
-    final moq = widget.product.minimumOrderQuantity;
-    final newQuantity = quantity + moq; // Tambah dengan kelipatan
+    final moq = widget.product.minimumOrderQuantity > 0
+        ? widget.product.minimumOrderQuantity
+        : 1;
+    final newQuantity = quantity + moq;
 
     if (newQuantity <= widget.product.stock) {
       setState(() {
@@ -81,12 +80,12 @@ class _DetailPageState extends State<DetailPage> {
     }
   }
 
-  // --- PERUBAHAN 3: Logika pengurangan sesuai kelipatan ---
   void decrementQuantity() {
-    final moq = widget.product.minimumOrderQuantity;
-    final newQuantity = quantity - moq; // Kurangi dengan kelipatan
+    final moq = widget.product.minimumOrderQuantity > 0
+        ? widget.product.minimumOrderQuantity
+        : 1;
+    final newQuantity = quantity - moq;
 
-    // Jumlah tidak boleh kurang dari minimum order
     if (newQuantity >= moq) {
       setState(() {
         quantity = newQuantity;
@@ -94,9 +93,7 @@ class _DetailPageState extends State<DetailPage> {
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(
-            'Jumlah tidak bisa kurang dari minimum order (${moq})!',
-          ),
+          content: Text('Jumlah tidak bisa kurang dari minimum order ($moq)'),
         ),
       );
     }
@@ -105,23 +102,10 @@ class _DetailPageState extends State<DetailPage> {
   @override
   Widget build(BuildContext context) {
     final product = widget.product;
-
     final Color primaryColor = const Color(0xFF4E342E);
-    final Color accentColor = const Color(0xFFFF7043);
-    final Color priceColor = const Color(0xFF2E7D32);
-    final Color discountColor = const Color(0xFFD32F2F);
     final Color textColor = Colors.grey[800]!;
 
-    double originalPrice = product.price;
-    double discount = product.discountPercentage;
-    double discountedPrice = product.finalPrice;
-
-    // Akses ProductProvider untuk operasi CRUD
-    final productProvider = Provider.of<ProductProvider>(
-      context,
-      listen: false,
-    );
-
+    // Cek apakah pengguna yang melihat adalah pemilik produk
     final bool isOwner =
         product.uploaderUsername != null &&
         product.uploaderUsername == widget.currentUser.username;
@@ -129,22 +113,17 @@ class _DetailPageState extends State<DetailPage> {
     return Scaffold(
       appBar: AppBar(
         backgroundColor: primaryColor,
-        title: Text(
-          product.title,
-          style: GoogleFonts.poppins(
-            fontWeight: FontWeight.w600,
-            color: Colors.white,
-          ),
-          overflow: TextOverflow.ellipsis,
-        ),
+        title: Text(product.title, style: GoogleFonts.poppins()),
         actions: [
-          IconButton(
-            icon: Icon(
-              isFavorite ? Icons.favorite : Icons.favorite_border,
-              color: isFavorite ? Colors.redAccent : Colors.white,
+          // Pemilik produk tidak bisa memfavoritkan produk sendiri
+          if (!isOwner)
+            IconButton(
+              icon: Icon(
+                isFavorite ? Icons.favorite : Icons.favorite_border,
+                color: isFavorite ? Colors.redAccent : Colors.white,
+              ),
+              onPressed: toggleFavorite,
             ),
-            onPressed: toggleFavorite,
-          ),
         ],
       ),
       body: SingleChildScrollView(
@@ -152,13 +131,13 @@ class _DetailPageState extends State<DetailPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Carousel gambar produk
+            // Gambar Produk
             SizedBox(
               height: 250,
               child: PageView.builder(
                 itemCount: product.images.isNotEmpty
                     ? product.images.length
-                    : 1, // Handle empty images list
+                    : 1,
                 itemBuilder: (context, index) {
                   return ClipRRect(
                     borderRadius: BorderRadius.circular(18),
@@ -171,7 +150,6 @@ class _DetailPageState extends State<DetailPage> {
                                 const Icon(Icons.broken_image, size: 50),
                           )
                         : Container(
-                            // Placeholder if no images
                             color: Colors.grey[300],
                             child: const Icon(
                               Icons.image_not_supported,
@@ -184,6 +162,7 @@ class _DetailPageState extends State<DetailPage> {
               ),
             ),
             const SizedBox(height: 16),
+
             // Nama Produk
             Text(
               product.title,
@@ -194,511 +173,367 @@ class _DetailPageState extends State<DetailPage> {
               ),
             ),
             const SizedBox(height: 8),
+
+            // Info Penjual
             if (product.uploaderUsername != null &&
                 product.uploaderUsername!.isNotEmpty) ...[
-              Row(
-                children: [
-                  Icon(
-                    Icons.store_mall_directory_outlined,
-                    color: Colors.grey[700],
-                    size: 18,
-                  ),
-                  const SizedBox(width: 8),
-                  Text(
-                    'Dijual oleh: ',
-                    style: GoogleFonts.poppins(fontSize: 15, color: textColor),
-                  ),
-                  Text(
-                    '${product.uploaderUsername}',
-                    style: GoogleFonts.poppins(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w600,
-                      color: accentColor, // Warna oranye agar menonjol
-                    ),
-                  ),
-                ],
+              _buildInfoRow(
+                icon: Icons.store_mall_directory_outlined,
+                label: 'Dijual oleh:',
+                value: product.uploaderUsername!,
               ),
               const SizedBox(height: 8),
             ],
-            // Kategori dan Rating
-            Text(
-              "Kategori: ${product.category}",
-              style: GoogleFonts.poppins(fontSize: 16, color: textColor),
+
+            // Kategori, Rating, Stok
+            _buildInfoRow(
+              icon: Icons.category_outlined,
+              label: 'Kategori:',
+              value: product.category,
             ),
-            Row(
-              children: [
-                const Icon(Icons.star, color: Colors.amber, size: 20),
-                const SizedBox(width: 6),
-                Text(
-                  "${product.rating.toStringAsFixed(1)}", // Format rating
-                  style: GoogleFonts.poppins(fontSize: 16, color: textColor),
-                ),
-                const SizedBox(width: 16),
-                Text(
-                  "Stock: ${product.stock}",
-                  style: GoogleFonts.poppins(
-                    fontSize: 14,
-                    color: product.stock <= 10 && product.stock > 0
-                        ? Colors.orange
-                        : textColor,
-                    fontWeight: product.stock <= 10 && product.stock > 0
-                        ? FontWeight.bold
-                        : FontWeight.normal,
-                  ),
-                ),
-              ],
+            _buildInfoRow(
+              icon: Icons.star_border_outlined,
+              label: 'Rating:',
+              value: "${product.rating.toStringAsFixed(1)} / 5.0",
             ),
+            _buildInfoRow(
+              icon: Icons.inventory_2_outlined,
+              label: 'Stok Tersisa:',
+              value: "${product.stock} buah",
+            ),
+            const Divider(height: 24),
+
+            // Harga
+            _buildPriceSection(product),
             const SizedBox(height: 16),
 
-            // Bagian harga dengan diskon
-            if (discount > 0)
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.end,
+            // Info Grosir
+            _buildInfoRow(
+              icon: Icons.shopping_basket_outlined,
+              label: 'Minimal Pembelian:',
+              value: '${product.minimumOrderQuantity} buah',
+            ),
+            const Divider(height: 24),
+            if (product.tags.isNotEmpty &&
+                !(product.tags.length == 1 && product.tags.first.isEmpty))
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Harga asli dicoret dengan warna abu-abu
                   Text(
-                    '\$${originalPrice.toStringAsFixed(2)}',
+                    "Tags",
                     style: GoogleFonts.poppins(
-                      fontSize: 16,
-                      color: Colors.grey,
-                      decoration: TextDecoration.lineThrough,
+                      fontSize: 18,
+                      fontWeight: FontWeight.w600,
                     ),
                   ),
-                  const SizedBox(width: 12),
-                  // Harga diskon lebih besar dan tebal
-                  Text(
-                    '\$${discountedPrice.toStringAsFixed(2)}',
-                    style: GoogleFonts.poppins(
-                      fontSize: 26,
-                      fontWeight: FontWeight.bold,
-                      color: priceColor,
-                    ),
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 8.0, // Jarak horizontal antar chip
+                    runSpacing: 4.0, // Jarak vertikal antar baris chip
+                    children: product.tags
+                        .map(
+                          (tag) => Chip(
+                            label: Text(tag, style: GoogleFonts.poppins()),
+                            backgroundColor: Colors.green[100],
+                            side: BorderSide(color: Colors.green.shade200),
+                          ),
+                        )
+                        .toList(),
                   ),
-                  const SizedBox(width: 12),
-                  // Persentase diskon dalam kotak berwarna menarik
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 4,
-                    ),
-                    decoration: BoxDecoration(
-                      color: discountColor,
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: Text(
-                      '-${discount.toStringAsFixed(0)}%',
-                      style: GoogleFonts.poppins(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.white,
-                      ),
-                    ),
-                  ),
+                  const Divider(height: 24),
                 ],
-              )
-            else
-              // Jika tidak ada diskon, tampilkan harga biasa dengan simbol $
-              Text(
-                '\$${originalPrice.toStringAsFixed(2)}',
-                style: GoogleFonts.poppins(
-                  fontSize: 26,
-                  fontWeight: FontWeight.bold,
-                  color: priceColor,
-                ),
               ),
 
-            const SizedBox(height: 16),
             // Deskripsi
             Text(
-              "Deskripsi",
+              "Deskripsi Produk",
               style: GoogleFonts.poppins(
                 fontSize: 18,
                 fontWeight: FontWeight.w600,
-                color: primaryColor,
               ),
             ),
+            const SizedBox(height: 8),
             Text(
               product.description,
               style: GoogleFonts.poppins(fontSize: 14, color: textColor),
             ),
-            const SizedBox(height: 12),
-            // Dimensi dan Berat
-            Text(
-              "Dimensi & Berat",
+            const SizedBox(height: 24),
+
+            // --- BAGIAN AKSI (TOMBOL) ---
+            // Tampilkan tombol Beli/Keranjang HANYA jika bukan pemilik
+            if (!isOwner) _buildBuyerActions() else _buildSellerNotice(),
+
+            // Tombol Edit/Delete hanya untuk pemilik
+            if (isOwner) _buildSellerEditDeleteActions(),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildInfoRow({
+    required IconData icon,
+    required String label,
+    required String value,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4.0),
+      child: Row(
+        children: [
+          Icon(icon, color: Colors.grey[600], size: 18),
+          const SizedBox(width: 8),
+          Text('$label ', style: GoogleFonts.poppins(fontSize: 15)),
+          Expanded(
+            child: Text(
+              value,
               style: GoogleFonts.poppins(
-                fontSize: 18,
+                fontSize: 15,
                 fontWeight: FontWeight.w600,
-                color: primaryColor,
               ),
+              overflow: TextOverflow.ellipsis,
             ),
-            Text(
-              "Dimensi: ${product.dimensions.toString()}", // Pastikan toString di ProductDimensions
-              style: GoogleFonts.poppins(fontSize: 14, color: textColor),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPriceSection(ProductModel product) {
+    final discountedPrice = product.finalPrice;
+    final originalPrice = product.price;
+    final discountPercentage = product.discountPercentage;
+    final Color priceColor = const Color(0xFF2E7D32);
+
+    if (discountPercentage > 0) {
+      return Row(
+        crossAxisAlignment: CrossAxisAlignment.baseline,
+        textBaseline: TextBaseline.alphabetic,
+        children: [
+          Text(
+            '\$${discountedPrice.toStringAsFixed(2)}',
+            style: GoogleFonts.poppins(
+              fontSize: 28,
+              fontWeight: FontWeight.bold,
+              color: priceColor,
             ),
-            Text(
-              "Berat: ${product.weight} kg",
-              style: GoogleFonts.poppins(fontSize: 14, color: textColor),
+          ),
+          const SizedBox(width: 12),
+          Text(
+            '\$${originalPrice.toStringAsFixed(2)}',
+            style: GoogleFonts.poppins(
+              fontSize: 16,
+              color: Colors.grey,
+              decoration: TextDecoration.lineThrough,
             ),
-            const SizedBox(height: 12),
-            // Tags
-            Text(
-              "Tags",
-              style: GoogleFonts.poppins(
-                fontSize: 18,
-                fontWeight: FontWeight.w600,
-                color: primaryColor,
-              ),
+          ),
+        ],
+      );
+    } else {
+      return Text(
+        '\$${originalPrice.toStringAsFixed(2)}',
+        style: GoogleFonts.poppins(
+          fontSize: 28,
+          fontWeight: FontWeight.bold,
+          color: priceColor,
+        ),
+      );
+    }
+  }
+
+  Widget _buildBuyerActions() {
+    final product = widget.product;
+    final Color accentColor = const Color(0xFFFF7043);
+
+    return Column(
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            IconButton(
+              icon: const Icon(Icons.remove_circle_outline, size: 32),
+              onPressed: decrementQuantity,
+              color: Colors.orange.shade700,
             ),
-            Wrap(
-              spacing: 8,
-              runSpacing: 4,
-              children: product.tags.map((tag) {
-                return Chip(
-                  label: Text(tag, style: GoogleFonts.poppins(fontSize: 12)),
-                  backgroundColor: Colors.brown[100],
-                );
-              }).toList(),
-            ),
-            const SizedBox(height: 12),
-            // Informasi Lain
-            Text(
-              "Informasi Lain",
-              style: GoogleFonts.poppins(
-                fontSize: 18,
-                fontWeight: FontWeight.w600,
-                color: primaryColor,
-              ),
-            ),
-            Text(
-              "Garansi: ${product.warrantyInformation}",
-              style: GoogleFonts.poppins(fontSize: 14, color: textColor),
-            ),
-            Text(
-              "Pengiriman: ${product.shippingInformation}",
-              style: GoogleFonts.poppins(fontSize: 14, color: textColor),
-            ),
-            Text(
-              "Status: ${product.availabilityStatus}",
-              style: GoogleFonts.poppins(fontSize: 14, color: textColor),
-            ),
-            Text(
-              "Kebijakan Retur: ${product.returnPolicy}",
-              style: GoogleFonts.poppins(fontSize: 14, color: textColor),
-            ),
-            Text(
-              "Minimal Pembelian: ${product.minimumOrderQuantity}",
-              style: GoogleFonts.poppins(fontSize: 14, color: textColor),
-            ),
-            const SizedBox(height: 12),
-            // Ulasan
-            if (product.reviews.isNotEmpty) ...[
-              Text(
-                "Ulasan",
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+              child: Text(
+                quantity.toString(),
                 style: GoogleFonts.poppins(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w600,
-                  color: primaryColor,
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
                 ),
               ),
-              ...product.reviews.map((review) {
-                return ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  leading: Icon(Icons.person, color: primaryColor),
-                  title: Text(
-                    review.reviewerName,
-                    style: GoogleFonts.poppins(
-                      fontWeight: FontWeight.w600,
-                      color: textColor,
-                    ),
+            ),
+            IconButton(
+              icon: const Icon(Icons.add_circle_outline, size: 32),
+              onPressed: incrementQuantity,
+              color: Colors.green.shade700,
+            ),
+          ],
+        ),
+        const SizedBox(height: 24),
+        Row(
+          children: [
+            Expanded(
+              child: OutlinedButton(
+                onPressed: () {
+                  if (quantity > product.stock) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Jumlah melebihi stok')),
+                    );
+                    return;
+                  }
+                  widget.onAddToCart(product, quantity);
+                },
+                style: OutlinedButton.styleFrom(
+                  side: BorderSide(color: accentColor, width: 2),
+                  foregroundColor: accentColor,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
                   ),
-                  subtitle: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        review.comment,
-                        style: GoogleFonts.poppins(
-                          fontSize: 14,
-                          color: textColor,
-                        ),
+                ),
+                child: const Icon(Icons.shopping_cart_outlined),
+              ),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              flex: 3,
+              child: ElevatedButton.icon(
+                icon: const Icon(Icons.flash_on_rounded, color: Colors.white),
+                label: Text(
+                  'Beli Sekarang',
+                  style: GoogleFonts.poppins(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.white,
+                  ),
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: accentColor,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                ),
+                onPressed: () {
+                  if (quantity > product.stock) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Jumlah melebihi stok')),
+                    );
+                    return;
+                  }
+                  final List<CartItem> buyNowItems = [
+                    CartItem(product: product, quantity: quantity),
+                  ];
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => CheckoutPage(
+                        cartItems: buyNowItems,
+                        onCheckoutComplete: () => Navigator.of(context).pop(),
                       ),
-                      Text(
-                        "Rating: ${review.rating}/5",
-                        style: GoogleFonts.poppins(
-                          fontSize: 12,
-                          color: Colors.grey[600],
-                        ),
+                    ),
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSellerNotice() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.blueGrey[50],
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.blueGrey.shade100),
+      ),
+      child: Center(
+        child: Text(
+          'Anda adalah pemilik produk ini. Anda bisa mengedit atau menghapus produk di bawah.',
+          textAlign: TextAlign.center,
+          style: GoogleFonts.poppins(fontSize: 15, color: Colors.blueGrey[800]),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSellerEditDeleteActions() {
+    final product = widget.product;
+    final productProvider = Provider.of<ProductProvider>(
+      context,
+      listen: false,
+    );
+
+    return Padding(
+      padding: const EdgeInsets.only(top: 24.0),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+        children: [
+          Expanded(
+            child: ElevatedButton.icon(
+              onPressed: () => Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => EditProductPage(product: product),
+                ),
+              ),
+              icon: const Icon(Icons.edit),
+              label: const Text('Edit Produk'),
+              style: ElevatedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(vertical: 12),
+              ),
+            ),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: ElevatedButton.icon(
+              onPressed: () async {
+                bool? confirmDelete = await showDialog<bool>(
+                  context: context,
+                  builder: (context) => AlertDialog(
+                    title: const Text('Hapus Produk?'),
+                    content: Text(
+                      'Anda yakin ingin menghapus "${product.title}"?',
+                    ),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.pop(context, false),
+                        child: const Text('Batal'),
                       ),
-                      Text(
-                        "Tanggal: ${review.date}",
-                        style: GoogleFonts.poppins(
-                          fontSize: 12,
-                          color: Colors.grey[600],
+                      TextButton(
+                        onPressed: () => Navigator.pop(context, true),
+                        child: const Text(
+                          'Hapus',
+                          style: TextStyle(color: Colors.red),
                         ),
                       ),
                     ],
                   ),
                 );
-              }).toList(),
-            ],
-            const SizedBox(height: 24),
-
-            // --- Tombol Edit/Delete (Hanya untuk Seller) ---
-            if (widget.isSeller && isOwner)
-              Padding(
-                padding: const EdgeInsets.only(
-                  bottom: 20.0,
-                  top: 20.0, // Tambahkan sedikit jarak atas
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                  children: [
-                    Expanded(
-                      child: ElevatedButton.icon(
-                        onPressed: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) =>
-                                  EditProductPage(product: product),
-                            ),
-                          ).then((updatedProduct) {
-                            if (updatedProduct != null &&
-                                updatedProduct is ProductModel) {
-                              setState(() {
-                                // Rebuild UI jika perlu
-                              });
-                            }
-                          });
-                        },
-                        icon: const Icon(Icons.edit, color: Colors.white),
-                        label: Text(
-                          'Edit Produk',
-                          style: GoogleFonts.poppins(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
-                          ),
-                        ),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: primaryColor,
-                          padding: const EdgeInsets.symmetric(vertical: 12),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: ElevatedButton.icon(
-                        onPressed: () async {
-                          bool? confirmDelete = await showDialog<bool>(
-                            context: context,
-                            builder: (context) => AlertDialog(
-                              title: const Text('Hapus Produk?'),
-                              content: Text(
-                                'Apakah Anda yakin ingin menghapus "${product.title}"?',
-                              ),
-                              actions: [
-                                TextButton(
-                                  onPressed: () =>
-                                      Navigator.pop(context, false),
-                                  child: const Text('Batal'),
-                                ),
-                                TextButton(
-                                  onPressed: () => Navigator.pop(context, true),
-                                  style: TextButton.styleFrom(
-                                    foregroundColor: Colors.red,
-                                  ),
-                                  child: const Text('Hapus'),
-                                ),
-                              ],
-                            ),
-                          );
-
-                          if (confirmDelete == true) {
-                            // CHANGED: Calling deleteProduct with product.id (which is String)
-                            final success = await productProvider.deleteProduct(
-                              product.id,
-                            );
-
-                            if (success) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text('Produk berhasil dihapus!'),
-                                ),
-                              );
-                              Navigator.pop(
-                                context,
-                              ); // Kembali ke halaman sebelumnya (HomePage)
-                            } else {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content: Text(
-                                    'Gagal menghapus produk: ${productProvider.errorMessage ?? "Terjadi kesalahan"}',
-                                  ),
-                                ),
-                              );
-                            }
-                          }
-                        },
-                        icon: const Icon(
-                          Icons.delete_forever,
-                          color: Colors.white,
-                        ),
-                        label: Text(
-                          'Hapus Produk',
-                          style: GoogleFonts.poppins(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
-                          ),
-                        ),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.red.shade700,
-                          padding: const EdgeInsets.symmetric(vertical: 12),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
+                if (confirmDelete == true) {
+                  final success = await productProvider.deleteProduct(
+                    product.id,
+                  );
+                  if (success && mounted) {
+                    Navigator.pop(context);
+                  }
+                }
+              },
+              icon: const Icon(Icons.delete_forever),
+              label: const Text('Hapus'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.red.shade700,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 12),
               ),
-
-            // Quantity selector
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                IconButton(
-                  icon: const Icon(Icons.remove_circle_outline, size: 32),
-                  onPressed: decrementQuantity,
-                  color: Colors.orange,
-                ),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 24,
-                    vertical: 8,
-                  ),
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(12),
-                    color: Colors.grey[300],
-                  ),
-                  child: Text(
-                    quantity.toString(),
-                    style: GoogleFonts.poppins(
-                      fontSize: 22,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-                IconButton(
-                  icon: const Icon(Icons.add_circle_outline, size: 32),
-                  onPressed: incrementQuantity,
-                  color: Colors.green,
-                ),
-              ],
             ),
-
-            Row(
-              children: [
-                // Tombol Tambah ke Keranjang
-                Expanded(
-                  child: OutlinedButton(
-                    onPressed: () {
-                      if (quantity > product.stock) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('Jumlah melebihi stok yang tersedia'),
-                          ),
-                        );
-                        return;
-                      }
-                      widget.onAddToCart(product, quantity);
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text(
-                            '$quantity x ${product.title} ditambahkan ke keranjang',
-                          ),
-                        ),
-                      );
-                    },
-                    style: OutlinedButton.styleFrom(
-                      side: BorderSide(color: accentColor, width: 2),
-                      foregroundColor: accentColor,
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                    ),
-                    child: const Icon(Icons.shopping_cart_outlined),
-                  ),
-                ),
-                const SizedBox(width: 16),
-                // Tombol Beli Sekarang
-                Expanded(
-                  flex: 2, // Membuat tombol ini lebih lebar
-                  child: ElevatedButton.icon(
-                    icon: const Icon(
-                      Icons.flash_on_rounded,
-                      color: Colors.white,
-                    ),
-                    label: Text(
-                      'Beli Sekarang',
-                      style: GoogleFonts.poppins(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.white,
-                      ),
-                    ),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: accentColor,
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                    ),
-                    onPressed: () {
-                      if (quantity > product.stock) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('Jumlah melebihi stok yang tersedia'),
-                          ),
-                        );
-                        return;
-                      }
-
-                      // Buat list item sementara hanya untuk produk ini
-                      final List<CartItem> buyNowItems = [
-                        CartItem(product: product, quantity: quantity),
-                      ];
-
-                      // Definisikan apa yang terjadi setelah checkout "Beli Sekarang" selesai
-                      void handleBuyNowComplete() {
-                        // Cukup kembali dari halaman detail
-                        if (Navigator.canPop(context)) {
-                          Navigator.of(context).pop();
-                        }
-                      }
-
-                      // Navigasi langsung ke CheckoutPage
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => CheckoutPage(
-                            cartItems: buyNowItems,
-                            onCheckoutComplete: handleBuyNowComplete,
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

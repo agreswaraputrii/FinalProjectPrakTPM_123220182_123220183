@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:hive/hive.dart';
 import '../models/product_model.dart';
 import '../services/product_service.dart';
+import '../models/order_model.dart';
 
 class ProductProvider with ChangeNotifier {
   final ProductService _productService = ProductService();
@@ -16,78 +17,94 @@ class ProductProvider with ChangeNotifier {
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
 
-  // --- PERBAIKAN 2: Filter produk langsung di getter ---
-  /// Sekarang getter ini secara aktif menyaring semua produk
-  /// dan hanya mengembalikan yang kategorinya 'groceries'.
+  /// --- PERBAIKAN UTAMA DI SINI ---
+  /// Getter ini bertugas untuk menggabungkan produk dari dua sumber:
+  /// 1. Produk dari API (DummyJSON).
+  /// 2. Produk lokal yang ditambahkan oleh semua penjual (disimpan di Hive).
+  /// Keduanya kemudian disaring untuk hanya menampilkan yang berkategori 'groceries'.
   List<ProductModel> get allProducts {
-    // Gabungkan semua produk dari sumber lokal (Hive) dan API
-    final all = [..._localProducts, ..._apiProducts];
+    // Gabungkan semua produk dari sumber lokal dan API menjadi satu daftar besar.
+    final combinedList = [..._localProducts, ..._apiProducts];
 
-    // Kembalikan hanya produk yang kategorinya 'groceries'
-    return all
+    // Saring daftar gabungan untuk hanya mengembalikan produk 'groceries'.
+    // Ini memastikan halaman utama Anda hanya menampilkan produk yang relevan.
+    return combinedList
         .where((product) => product.category.toLowerCase() == 'groceries')
         .toList();
   }
 
   ProductProvider() {
     _productBox = Hive.box<ProductModel>('productBox');
-    _loadLocalProducts();
-    // --- PERBAIKAN 1: Panggil dengan kategori 'groceries' ---
-    fetchProducts(
-      category: 'groceries',
-    ); // Panggil dengan kategori spesifik saat startup
+    _loadLocalProducts(); // Muat produk dari database lokal (Hive)
+    fetchProducts(category: 'groceries'); // Ambil produk dari API
   }
 
+  // Memuat produk yang disimpan secara lokal dari database Hive
   void _loadLocalProducts() {
     _localProducts = _productBox.values.toList();
-    // Tidak perlu notifyListeners() di sini karena fetchProducts akan melakukannya
   }
 
-  Future<void> fetchProducts({String? category = 'groceries'}) async {
+  // Mengambil data produk dari API
+  Future<void> fetchProducts({String? category}) async {
     _isLoading = true;
     _errorMessage = null;
     notifyListeners();
     try {
       _apiProducts = await _productService.fetchProducts(category: category);
     } catch (e) {
-      _errorMessage = 'Failed to load products: ${e.toString()}';
+      _errorMessage = 'Gagal memuat produk dari server: ${e.toString()}';
     } finally {
       _isLoading = false;
       notifyListeners();
     }
   }
 
+  // Menyimpan produk baru ke database Hive
   Future<void> addLocalProduct(ProductModel product) async {
-    // Pastikan produk yang ditambahkan juga memiliki kategori groceries jika ingin langsung tampil
-    // atau biarkan apa adanya dan getter 'allProducts' yang akan menyaringnya.
     await _productBox.put(product.id, product);
-    _loadLocalProducts(); // Muat ulang dari Hive agar konsisten
-    print('ProductProvider: Local product saved to Hive: ${product.title}');
+    _loadLocalProducts(); // Muat ulang daftar produk lokal dari Hive
+    notifyListeners(); // Perbarui UI
   }
 
+  // Memperbarui produk yang ada di Hive
   Future<bool> updateProduct(String id, ProductModel updatedProduct) async {
-    final index = _localProducts.indexWhere((p) => p.id == id);
-    if (index != -1) {
+    if (_productBox.containsKey(id)) {
       await _productBox.put(id, updatedProduct);
-      _loadLocalProducts(); // Muat ulang dari Hive
+      _loadLocalProducts();
+      notifyListeners();
       return true;
     }
     return false;
   }
 
+  // Menghapus produk dari Hive
   Future<bool> deleteProduct(String productId) async {
-    final index = _localProducts.indexWhere((p) => p.id == productId);
-    if (index != -1) {
+    if (_productBox.containsKey(productId)) {
       await _productBox.delete(productId);
-      _loadLocalProducts(); // Muat ulang dari Hive
+      _loadLocalProducts();
+      notifyListeners();
       return true;
     }
     return false;
   }
 
+  // Mengurangi stok produk di Hive setelah ada pesanan
+  Future<void> reduceStockForOrder(List<OrderProductItem> items) async {
+    for (final item in items) {
+      final productToUpdate = _productBox.get(item.productId);
+      if (productToUpdate != null) {
+        final newStock = productToUpdate.stock - item.quantity;
+        productToUpdate.stock = newStock < 0 ? 0 : newStock;
+        await productToUpdate.save();
+      }
+    }
+    _loadLocalProducts();
+    notifyListeners();
+  }
+
+  // Mendapatkan produk yang diunggah oleh pengguna tertentu (untuk halaman profil)
   List<ProductModel> getProductsByUploader(String uploaderUsername) {
-    // Getter ini juga secara otomatis akan terfilter karena menggunakan 'allProducts'
-    return allProducts
+    return _localProducts
         .where((p) => p.uploaderUsername == uploaderUsername)
         .toList();
   }

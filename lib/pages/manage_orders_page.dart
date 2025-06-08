@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import '../models/order_model.dart';
 import '../providers/order_provider.dart';
+import '../providers/product_provider.dart'; // <-- 1. IMPORT PRODUCT PROVIDER
 
 class ManageOrdersPage extends StatelessWidget {
   final String sellerUsername;
@@ -176,7 +177,15 @@ class ManageOrdersPage extends StatelessWidget {
     return ElevatedButton(
       onPressed: isEnabled
           ? () {
-              provider.updateOrderStatus(order.orderId, newStatus);
+              context.read<OrderProvider>().updateOrderStatus(
+                order.orderId,
+                newStatus,
+              );
+              if (newStatus == OrderStatus.shipped) {
+                context.read<ProductProvider>().reduceStockForOrder(
+                  order.items,
+                );
+              }
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
                   content: Text(

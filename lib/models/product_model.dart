@@ -20,15 +20,15 @@ class ProductModel extends HiveObject {
   @HiveField(6)
   final double rating;
   @HiveField(7)
-  final int stock;
+  int stock; // Dibuat tidak final agar bisa diubah
   @HiveField(8)
   final List<String> tags;
   @HiveField(9)
-  final double weight;
+  final double? weight; // Diubah menjadi opsional
   @HiveField(10)
-  final ProductDimensions dimensions;
+  final ProductDimensions? dimensions; // Diubah menjadi opsional
   @HiveField(11)
-  final String warrantyInformation;
+  final String? warrantyInformation; // Diubah menjadi opsional
   @HiveField(12)
   final String shippingInformation;
   @HiveField(13)
@@ -36,7 +36,7 @@ class ProductModel extends HiveObject {
   @HiveField(14)
   final List<ProductReview> reviews;
   @HiveField(15)
-  final String returnPolicy;
+  final String? returnPolicy; // Diubah menjadi opsional
   @HiveField(16)
   final int minimumOrderQuantity;
   @HiveField(17)
@@ -75,6 +75,9 @@ class ProductModel extends HiveObject {
   });
 
   double get finalPrice => price * (1 - discountPercentage / 100);
+
+  bool get hasFreeShipping =>
+      shippingInformation.toLowerCase().contains('free');
 
   factory ProductModel.fromJsonSafe(Map<String, dynamic> json) {
     return ProductModel(
@@ -127,7 +130,7 @@ class ProductModel extends HiveObject {
       'stock': stock,
       'tags': tags,
       'weight': weight,
-      'dimensions': dimensions.toJson(),
+      'dimensions': dimensions?.toJson(),
       'warrantyInformation': warrantyInformation,
       'shippingInformation': shippingInformation,
       'availabilityStatus': availabilityStatus,
