@@ -30,6 +30,14 @@ import '../pages/saran_kesan_page.dart'; // Saran & Kesan Page
 import '../pages/notification_page.dart';
 import '../pages/add_product_page.dart';
 
+enum SortOption {
+  none,
+  priceLowToHigh,
+  priceHighToLow,
+  ratingLowToHigh,
+  ratingHighToLow,
+}
+
 class HomePage extends StatefulWidget {
   final UserModel user;
 
@@ -52,6 +60,14 @@ class _HomePageState extends State<HomePage> {
   int _selectedIndex =
       0; // 0: Home, 1: User Profile, 2: My Personal Profile, 3: Saran & Kesan, 4: Logout Placeholder
 
+  // Search and Sort variables
+  final TextEditingController _searchController = TextEditingController();
+  // _searchQuery tidak perlu diinisialisasi di sini karena akan di-set melalui addListener
+  String _searchQuery = ''; // Inisialisasi dengan string kosong
+  SortOption _currentSortOption = SortOption.none;
+  // _isSearchVisible tidak digunakan dalam implementasi ini, bisa dihapus jika tidak diperlukan.
+  // bool _isSearchVisible = false;
+
   // Color scheme (matching RegisterPage)
   final Color primaryColor = const Color(0xFF2E7D32); // Green
   final Color secondaryColor = const Color(0xFF388E3C);
@@ -63,12 +79,24 @@ class _HomePageState extends State<HomePage> {
   void initState() {
     super.initState();
     _initServices();
+    _searchController.addListener(() {
+      // Panggil setState setiap kali teks berubah untuk memicu rebuild
+      setState(() {
+        _searchQuery = _searchController.text.toLowerCase();
+      });
+    });
     WidgetsBinding.instance.addPostFrameCallback((_) {
       Provider.of<ProductProvider>(
         context,
         listen: false,
       ).fetchProducts(category: 'groceries');
     });
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
   }
 
   Future<void> _initServices() async {
@@ -129,6 +157,298 @@ class _HomePageState extends State<HomePage> {
         _notificationCount = count;
       });
     }
+  }
+
+  // Filter and sort products
+  List<ProductModel> _getFilteredAndSortedProducts(
+    List<ProductModel> products,
+  ) {
+    // Mulai dengan semua produk yang ada
+    List<ProductModel> filteredProducts = List.from(products);
+
+    // Filter by search query
+    if (_searchQuery.isNotEmpty) {
+      filteredProducts = filteredProducts.where((product) {
+        // Mengubah title dan category produk menjadi huruf kecil untuk perbandingan
+        final productTitleLower = product.title.toLowerCase();
+        final productCategoryLower = product.category.toLowerCase();
+
+        return productTitleLower.contains(_searchQuery) ||
+            productCategoryLower.contains(_searchQuery);
+      }).toList();
+    }
+
+    // Sort products
+    switch (_currentSortOption) {
+      case SortOption.priceLowToHigh:
+        filteredProducts.sort((a, b) => a.finalPrice.compareTo(b.finalPrice));
+        break;
+      case SortOption.priceHighToLow:
+        filteredProducts.sort((a, b) => b.finalPrice.compareTo(a.finalPrice));
+        break;
+      case SortOption
+          .ratingLowToHigh: // Opsi baru: Rating Terendah ke Tertinggi
+        filteredProducts.sort((a, b) => a.rating.compareTo(b.rating));
+        break;
+      case SortOption
+          .ratingHighToLow: // Opsi baru: Rating Tertinggi ke Terendah
+        filteredProducts.sort((a, b) => b.rating.compareTo(a.rating));
+        break;
+      case SortOption.none:
+        // Biarkan urutan asli
+        break;
+    }
+    return filteredProducts;
+  }
+
+  void _showSortOptions() {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (BuildContext context) {
+        return Container(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Urutkan Berdasarkan',
+                style: GoogleFonts.poppins(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(height: 16),
+              ListTile(
+                leading: Icon(
+                  Icons.clear,
+                  color: _currentSortOption == SortOption.none
+                      ? primaryColor
+                      : Colors.grey,
+                ),
+                title: Text(
+                  'Default',
+                  style: GoogleFonts.poppins(
+                    color: _currentSortOption == SortOption.none
+                        ? primaryColor
+                        : Colors.black,
+                    fontWeight: _currentSortOption == SortOption.none
+                        ? FontWeight.w600
+                        : FontWeight.normal,
+                  ),
+                ),
+                onTap: () {
+                  setState(() {
+                    _currentSortOption = SortOption.none;
+                  });
+                  Navigator.pop(context);
+                },
+              ),
+              ListTile(
+                leading: Icon(
+                  Icons.arrow_upward,
+                  color: _currentSortOption == SortOption.priceLowToHigh
+                      ? primaryColor
+                      : Colors.grey,
+                ),
+                title: Text(
+                  'Harga Terendah ke Tertinggi',
+                  style: GoogleFonts.poppins(
+                    color: _currentSortOption == SortOption.priceLowToHigh
+                        ? primaryColor
+                        : Colors.black,
+                    fontWeight: _currentSortOption == SortOption.priceLowToHigh
+                        ? FontWeight.w600
+                        : FontWeight.normal,
+                  ),
+                ),
+                onTap: () {
+                  setState(() {
+                    _currentSortOption = SortOption.priceLowToHigh;
+                  });
+                  Navigator.pop(context);
+                },
+              ),
+              ListTile(
+                leading: Icon(
+                  Icons.arrow_downward,
+                  color: _currentSortOption == SortOption.priceHighToLow
+                      ? primaryColor
+                      : Colors.grey,
+                ),
+                title: Text(
+                  'Harga Tertinggi ke Terendah',
+                  style: GoogleFonts.poppins(
+                    color: _currentSortOption == SortOption.priceHighToLow
+                        ? primaryColor
+                        : Colors.black,
+                    fontWeight: _currentSortOption == SortOption.priceHighToLow
+                        ? FontWeight.w600
+                        : FontWeight.normal,
+                  ),
+                ),
+                onTap: () {
+                  setState(() {
+                    _currentSortOption = SortOption.priceHighToLow;
+                  });
+                  Navigator.pop(context);
+                },
+              ),
+              // Opsi baru: Sorting berdasarkan Rating
+              ListTile(
+                leading: Icon(
+                  Icons.star_border, // Atau Icons.star_rate_outlined, dll.
+                  color: _currentSortOption == SortOption.ratingLowToHigh
+                      ? primaryColor
+                      : Colors.grey,
+                ),
+                title: Text(
+                  'Rating Terendah ke Tertinggi',
+                  style: GoogleFonts.poppins(
+                    color: _currentSortOption == SortOption.ratingLowToHigh
+                        ? primaryColor
+                        : Colors.black,
+                    fontWeight: _currentSortOption == SortOption.ratingLowToHigh
+                        ? FontWeight.w600
+                        : FontWeight.normal,
+                  ),
+                ),
+                onTap: () {
+                  setState(() {
+                    _currentSortOption = SortOption.ratingLowToHigh;
+                  });
+                  Navigator.pop(context);
+                },
+              ),
+              ListTile(
+                leading: Icon(
+                  Icons.star, // Atau Icons.star_rate, dll.
+                  color: _currentSortOption == SortOption.ratingHighToLow
+                      ? primaryColor
+                      : Colors.grey,
+                ),
+                title: Text(
+                  'Rating Tertinggi ke Terendah',
+                  style: GoogleFonts.poppins(
+                    color: _currentSortOption == SortOption.ratingHighToLow
+                        ? primaryColor
+                        : Colors.black,
+                    fontWeight: _currentSortOption == SortOption.ratingHighToLow
+                        ? FontWeight.w600
+                        : FontWeight.normal,
+                  ),
+                ),
+                onTap: () {
+                  setState(() {
+                    _currentSortOption = SortOption.ratingHighToLow;
+                  });
+                  Navigator.pop(context);
+                },
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildSearchBar() {
+    return Container(
+      margin: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(30),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.withOpacity(0.2),
+            spreadRadius: 1,
+            blurRadius: 6,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      child: TextField(
+        controller: _searchController,
+        decoration: InputDecoration(
+          hintText: 'Cari produk...',
+          hintStyle: GoogleFonts.poppins(color: Colors.grey[500]),
+          prefixIcon: Icon(Icons.search, color: Colors.grey[600]),
+          suffixIcon: _searchQuery.isNotEmpty
+              ? IconButton(
+                  icon: Icon(Icons.clear, color: Colors.grey[600]),
+                  onPressed: () {
+                    _searchController.clear();
+                    // setState dipanggil di addListener, jadi tidak perlu di sini juga
+                    // setState(() {
+                    //   _searchQuery = '';
+                    // });
+                  },
+                )
+              : null,
+          border: InputBorder.none,
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 20,
+            vertical: 15,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFilterSortBar() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              _searchQuery.isNotEmpty
+                  ? 'Hasil pencarian: "$_searchQuery"'
+                  : 'Semua Produk',
+              style: GoogleFonts.poppins(
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+                color: Colors.grey[700],
+              ),
+            ),
+          ),
+          Container(
+            decoration: BoxDecoration(
+              border: Border.all(color: primaryColor),
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: InkWell(
+              onTap: _showSortOptions,
+              borderRadius: BorderRadius.circular(20),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 6,
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.sort, size: 16, color: primaryColor),
+                    const SizedBox(width: 4),
+                    Text(
+                      'Urutkan',
+                      style: GoogleFonts.poppins(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
+                        color: primaryColor,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   Widget _buildIconButton({
@@ -278,263 +598,6 @@ class _HomePageState extends State<HomePage> {
 
   // --- Widgets for each tab ---
 
-  Widget _buildHomeTab() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Container(
-          color: primaryColor,
-          width: double.infinity,
-          padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
-          child: Text(
-            "Selamat datang, ${widget.user.username}!",
-            style: GoogleFonts.poppins(
-              color: Colors.white,
-              fontWeight: FontWeight.w600,
-              fontSize: 20,
-            ),
-          ),
-        ),
-        Expanded(
-          child: Consumer<ProductProvider>(
-            builder: (context, productProvider, child) {
-              if (productProvider.isLoading) {
-                return const Center(child: CircularProgressIndicator());
-              }
-
-              if (productProvider.errorMessage != null) {
-                return Center(
-                  child: Padding(
-                    padding: const EdgeInsets.all(16.0),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Text(
-                          productProvider.errorMessage!,
-                          textAlign: TextAlign.center,
-                          style: const TextStyle(
-                            color: Colors.red,
-                            fontSize: 16,
-                          ),
-                        ),
-                        const SizedBox(height: 10),
-                        ElevatedButton(
-                          onPressed: () {
-                            productProvider.fetchProducts(
-                              category: 'groceries',
-                            );
-                            productProvider.clearErrorMessage();
-                          },
-                          child: const Text('Coba Lagi'),
-                        ),
-                      ],
-                    ),
-                  ),
-                );
-              }
-
-              if (productProvider.allProducts.isEmpty) {
-                return const Center(child: Text('Tidak ada produk ditemukan.'));
-              }
-
-              return GridView.builder(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 12,
-                ),
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 2,
-                  mainAxisSpacing: 14,
-                  crossAxisSpacing: 14,
-                  // Menggunakan childAspectRatio untuk memberikan kontrol rasio
-                  // Ini akan membuat lebar item grid menentukan tingginya berdasarkan rasio.
-                  childAspectRatio:
-                      0.70, // Pertahankan rasio aspek untuk item grid
-                ),
-                itemCount: productProvider.allProducts.length,
-                itemBuilder: (context, index) {
-                  final product = productProvider.allProducts[index];
-                  final isProductFavorite = favoriteProducts.any(
-                    (favProd) => favProd.id == product.id,
-                  );
-
-                  return Card(
-                    elevation: 6,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(18),
-                    ),
-                    shadowColor: Colors.black45,
-                    clipBehavior: Clip
-                        .antiAlias, // Penting untuk menggunting konten di sudut
-                    child: InkWell(
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => DetailPage(
-                              product: product,
-                              onAddToCart: _addToCart,
-                              onAddToFavorite: _addToFavorites,
-                              currentUser: widget.user,
-                              isSeller: widget.user.roles.contains('seller'),
-                              isInitialFavorite: isProductFavorite,
-                            ),
-                          ),
-                        ).then((_) {
-                          setState(() {});
-                        });
-                      },
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          // FIXED HEIGHT FOR IMAGE CONTAINER TO CONTROL SPACE
-                          // This is a common workaround for stubborn image overflows in grids.
-                          // It gives the image a fixed height within the card,
-                          // regardless of its original aspect ratio, and then crops with BoxFit.cover.
-                          Container(
-                            height:
-                                140, // Adjust this height as needed to fit your images without overflow
-                            child: Stack(
-                              children: [
-                                ClipRRect(
-                                  borderRadius: const BorderRadius.vertical(
-                                    top: Radius.circular(18),
-                                  ),
-                                  child: Image.network(
-                                    product.thumbnail,
-                                    fit: BoxFit
-                                        .cover, // Image covers the space, cropping if needed
-                                    width: double
-                                        .infinity, // Take full width of its parent (Container)
-                                    errorBuilder:
-                                        (context, error, stackTrace) =>
-                                            Container(
-                                              color: Colors.grey[300],
-                                              alignment: Alignment.center,
-                                              child: const Icon(
-                                                Icons.broken_image,
-                                                size: 40,
-                                                color: Colors.grey,
-                                              ),
-                                            ),
-                                  ),
-                                ),
-                                Positioned(
-                                  top: 6,
-                                  right: 6,
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.end,
-                                    children: [
-                                      _buildIconButton(
-                                        icon: isProductFavorite
-                                            ? Icons.favorite
-                                            : Icons.favorite_border,
-                                        color: isProductFavorite
-                                            ? Colors.red
-                                            : Colors.white,
-                                        onPressed: () =>
-                                            _toggleFavorite(product),
-                                      ),
-                                      const SizedBox(height: 8),
-                                      _buildIconButton(
-                                        icon: Icons.add_shopping_cart,
-                                        color: Colors.white,
-                                        onPressed: product.stock > 0
-                                            ? () {
-                                                _showQuantityDialogWithAdd(
-                                                  context,
-                                                  product,
-                                                );
-                                              }
-                                            : null,
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          Expanded(
-                            // Text details take remaining space
-                            child: Padding(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 8,
-                                vertical: 6,
-                              ),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                mainAxisAlignment:
-                                    MainAxisAlignment.spaceBetween,
-                                children: [
-                                  Text(
-                                    product.title,
-                                    maxLines: 2,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: GoogleFonts.poppins(
-                                      fontWeight: FontWeight.w600,
-                                      fontSize: 14,
-                                    ),
-                                  ),
-                                  Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      const SizedBox(height: 2),
-                                      Text(
-                                        product.category,
-                                        style: GoogleFonts.poppins(
-                                          color: Colors.grey[700],
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.w500,
-                                        ),
-                                      ),
-                                      const SizedBox(height: 4),
-                                      Text(
-                                        "\$${product.finalPrice.toStringAsFixed(2)} USD",
-                                        style: GoogleFonts.poppins(
-                                          fontWeight: FontWeight.bold,
-                                          fontSize: 16,
-                                          color: Colors.green[800],
-                                        ),
-                                      ),
-                                      const SizedBox(height: 4),
-                                      Row(
-                                        children: [
-                                          Icon(
-                                            Icons.star,
-                                            color: Colors.amber.shade600,
-                                            size: 14,
-                                          ),
-                                          const SizedBox(width: 4),
-                                          Text(
-                                            product.rating.toStringAsFixed(1),
-                                            style: GoogleFonts.poppins(
-                                              fontSize: 12,
-                                              fontWeight: FontWeight.w600,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ],
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  );
-                },
-              );
-            },
-          ),
-        ),
-      ],
-    );
-  }
-
-  // --- Main Build Method ---
   @override
   Widget build(BuildContext context) {
     final List<Widget> _pages = [
@@ -719,6 +782,290 @@ class _HomePageState extends State<HomePage> {
               backgroundColor: accentColor,
             )
           : null,
+    );
+  }
+
+  // --- Widgets for each tab ---
+  // Pastikan _buildHomeTab() ada di dalam class _HomePageState
+  Widget _buildHomeTab() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          color: primaryColor,
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
+          child: Text(
+            "Selamat datang, ${widget.user.username}!",
+            style: GoogleFonts.poppins(
+              color: Colors.white,
+              fontWeight: FontWeight.w600,
+              fontSize: 20,
+            ),
+          ),
+        ),
+        _buildSearchBar(),
+        _buildFilterSortBar(),
+        Expanded(
+          child: Consumer<ProductProvider>(
+            builder: (context, productProvider, child) {
+              if (productProvider.isLoading) {
+                return const Center(child: CircularProgressIndicator());
+              }
+
+              if (productProvider.errorMessage != null) {
+                return Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(
+                          productProvider.errorMessage!,
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            color: Colors.red,
+                            fontSize: 16,
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+                        ElevatedButton(
+                          onPressed: () {
+                            productProvider.fetchProducts(
+                              category: 'groceries',
+                            );
+                            productProvider.clearErrorMessage();
+                          },
+                          child: const Text('Coba Lagi'),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              }
+
+              if (productProvider.allProducts.isEmpty) {
+                return const Center(child: Text('Tidak ada produk ditemukan.'));
+              }
+
+              // Apply filter and sorting
+              final filteredProducts = _getFilteredAndSortedProducts(
+                productProvider.allProducts,
+              );
+
+              if (filteredProducts.isEmpty) {
+                return Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.search_off, size: 64, color: Colors.grey[400]),
+                      const SizedBox(height: 16),
+                      Text(
+                        'Tidak ada produk yang sesuai\ndengan pencarian Anda',
+                        textAlign: TextAlign.center,
+                        style: GoogleFonts.poppins(
+                          fontSize: 16,
+                          color: Colors.grey[600],
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      ElevatedButton(
+                        onPressed: () {
+                          _searchController.clear();
+                          // setState dipanggil di addListener, jadi tidak perlu di sini juga
+                          // setState(() {
+                          //   _searchQuery = '';
+                          // });
+                        },
+                        child: const Text('Hapus Filter'),
+                      ),
+                    ],
+                  ),
+                );
+              }
+
+              return GridView.builder(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 12,
+                ),
+                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 2,
+                  mainAxisSpacing: 14,
+                  crossAxisSpacing: 14,
+                  childAspectRatio: 0.70,
+                ),
+                itemCount: filteredProducts.length,
+                itemBuilder: (context, index) {
+                  final product = filteredProducts[index];
+                  final isProductFavorite = favoriteProducts.any(
+                    (favProd) => favProd.id == product.id,
+                  );
+
+                  return Card(
+                    elevation: 6,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(18),
+                    ),
+                    shadowColor: Colors.black45,
+                    clipBehavior: Clip.antiAlias,
+                    child: InkWell(
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => DetailPage(
+                              product: product,
+                              onAddToCart: _addToCart,
+                              onAddToFavorite: _addToFavorites,
+                              currentUser: widget.user,
+                              isSeller: widget.user.roles.contains('seller'),
+                              isInitialFavorite: isProductFavorite,
+                            ),
+                          ),
+                        ).then((_) {
+                          setState(() {});
+                        });
+                      },
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Container(
+                            height: 140,
+                            child: Stack(
+                              children: [
+                                ClipRRect(
+                                  borderRadius: const BorderRadius.vertical(
+                                    top: Radius.circular(18),
+                                  ),
+                                  child: Image.network(
+                                    product.thumbnail,
+                                    fit: BoxFit.cover,
+                                    width: double.infinity,
+                                    errorBuilder:
+                                        (context, error, stackTrace) =>
+                                            Container(
+                                              color: Colors.grey[300],
+                                              alignment: Alignment.center,
+                                              child: const Icon(
+                                                Icons.broken_image,
+                                                size: 40,
+                                                color: Colors.grey,
+                                              ),
+                                            ),
+                                  ),
+                                ),
+                                Positioned(
+                                  top: 6,
+                                  right: 6,
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.end,
+                                    children: [
+                                      _buildIconButton(
+                                        icon: isProductFavorite
+                                            ? Icons.favorite
+                                            : Icons.favorite_border,
+                                        color: isProductFavorite
+                                            ? Colors.red
+                                            : Colors.white,
+                                        onPressed: () =>
+                                            _toggleFavorite(product),
+                                      ),
+                                      const SizedBox(height: 8),
+                                      _buildIconButton(
+                                        icon: Icons.add_shopping_cart,
+                                        color: Colors.white,
+                                        onPressed: product.stock > 0
+                                            ? () {
+                                                _showQuantityDialogWithAdd(
+                                                  context,
+                                                  product,
+                                                );
+                                              }
+                                            : null,
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          Expanded(
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 6,
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Text(
+                                    product.title,
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: GoogleFonts.poppins(
+                                      fontWeight: FontWeight.w600,
+                                      fontSize: 14,
+                                    ),
+                                  ),
+                                  Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      const SizedBox(height: 2),
+                                      Text(
+                                        product.category,
+                                        style: GoogleFonts.poppins(
+                                          color: Colors.grey[700],
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 4),
+                                      Text(
+                                        "\$${product.finalPrice.toStringAsFixed(2)} USD",
+                                        style: GoogleFonts.poppins(
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 16,
+                                          color: Colors.green[800],
+                                        ),
+                                      ),
+                                      const SizedBox(height: 4),
+                                      Row(
+                                        children: [
+                                          Icon(
+                                            Icons.star,
+                                            color: Colors.amber.shade600,
+                                            size: 14,
+                                          ),
+                                          const SizedBox(width: 4),
+                                          Text(
+                                            product.rating.toStringAsFixed(1),
+                                            style: GoogleFonts.poppins(
+                                              fontSize: 12,
+                                              fontWeight: FontWeight.w600,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                },
+              );
+            },
+          ),
+        ),
+      ],
     );
   }
 }
