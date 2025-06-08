@@ -7,6 +7,8 @@ import '../models/product_model.dart';
 import '../models/user_model.dart'; // Import UserModel
 import '../providers/product_provider.dart'; // Import ProductProvider
 import '../pages/edit_product_page.dart'; // Import EditProductPage
+import '../pages/checkout_page.dart'; // <-- IMPORT CHECKOUT PAGE
+import '../pages/cart_page.dart'; // <-- IMPORT CARTITEM
 
 class DetailPage extends StatefulWidget {
   final ProductModel product;
@@ -38,7 +40,9 @@ class _DetailPageState extends State<DetailPage> {
   void initState() {
     super.initState();
     isFavorite = widget.isInitialFavorite; // Inisialisasi dari parameter
-    quantity = widget.product.minimumOrderQuantity;
+    quantity = widget.product.minimumOrderQuantity > 0
+        ? widget.product.minimumOrderQuantity
+        : 1;
   }
 
   void toggleFavorite() {
@@ -597,48 +601,101 @@ class _DetailPageState extends State<DetailPage> {
               ],
             ),
 
-            const SizedBox(height: 30),
-            Center(
-              child: SizedBox(
-                width: double.infinity,
-                child: ElevatedButton.icon(
-                  icon: const Icon(Icons.shopping_cart_outlined),
-                  label: Text(
-                    'Tambah ke Keranjang',
-                    style: GoogleFonts.poppins(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: accentColor,
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                  ),
-                  onPressed: () {
-                    if (quantity > product.stock) {
+            Row(
+              children: [
+                // Tombol Tambah ke Keranjang
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: () {
+                      if (quantity > product.stock) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Jumlah melebihi stok yang tersedia'),
+                          ),
+                        );
+                        return;
+                      }
+                      widget.onAddToCart(product, quantity);
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Jumlah melebihi stok yang tersedia'),
-                          duration: Duration(seconds: 2),
+                        SnackBar(
+                          content: Text(
+                            '$quantity x ${product.title} ditambahkan ke keranjang',
+                          ),
                         ),
                       );
-                      return;
-                    }
-                    widget.onAddToCart(product, quantity); // Panggil callback
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text(
-                          '$quantity x ${product.title} ditambahkan ke keranjang',
-                        ),
-                        duration: const Duration(seconds: 2),
+                    },
+                    style: OutlinedButton.styleFrom(
+                      side: BorderSide(color: accentColor, width: 2),
+                      foregroundColor: accentColor,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
                       ),
-                    );
-                  },
+                    ),
+                    child: const Icon(Icons.shopping_cart_outlined),
+                  ),
                 ),
-              ),
+                const SizedBox(width: 16),
+                // Tombol Beli Sekarang
+                Expanded(
+                  flex: 2, // Membuat tombol ini lebih lebar
+                  child: ElevatedButton.icon(
+                    icon: const Icon(
+                      Icons.flash_on_rounded,
+                      color: Colors.white,
+                    ),
+                    label: Text(
+                      'Beli Sekarang',
+                      style: GoogleFonts.poppins(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.white,
+                      ),
+                    ),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: accentColor,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                    ),
+                    onPressed: () {
+                      if (quantity > product.stock) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Jumlah melebihi stok yang tersedia'),
+                          ),
+                        );
+                        return;
+                      }
+
+                      // Buat list item sementara hanya untuk produk ini
+                      final List<CartItem> buyNowItems = [
+                        CartItem(product: product, quantity: quantity),
+                      ];
+
+                      // Definisikan apa yang terjadi setelah checkout "Beli Sekarang" selesai
+                      void handleBuyNowComplete() {
+                        // Cukup kembali dari halaman detail
+                        if (Navigator.canPop(context)) {
+                          Navigator.of(context).pop();
+                        }
+                      }
+
+                      // Navigasi langsung ke CheckoutPage
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => CheckoutPage(
+                            cartItems: buyNowItems,
+                            onCheckoutComplete: handleBuyNowComplete,
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ],
             ),
           ],
         ),

@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 import 'package:flutter/foundation.dart';
 import 'package:intl/intl.dart'; // Import for date formatting
 import 'dart:async'; // Import for Timer
+import 'package:sensors_plus/sensors_plus.dart';
 
 // Import Models
 import '../models/user_model.dart';
@@ -53,6 +54,10 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
+  final ScrollController _scrollController = ScrollController();
+  StreamSubscription? _accelerometerSubscription;
+  bool _isTiltScrollEnabled = false;
+
   List<ProductModel> favoriteProducts = [];
   List<CartItem> cartItems = [];
 
@@ -87,6 +92,7 @@ class _HomePageState extends State<HomePage> {
   void initState() {
     super.initState();
     _initServices();
+    _initTiltToScroll(); // Inisialisasi listener sensor
     _searchController.addListener(() {
       setState(() {
         _searchQuery = _searchController.text.toLowerCase();
@@ -109,9 +115,56 @@ class _HomePageState extends State<HomePage> {
 
   @override
   void dispose() {
+    _accelerometerSubscription?.cancel();
     _searchController.dispose();
     _timer?.cancel(); // Cancel the timer
     super.dispose();
+  }
+
+  void _initTiltToScroll() {
+    _accelerometerSubscription = accelerometerEvents.listen((
+      AccelerometerEvent event,
+    ) {
+      // Fitur hanya aktif jika tombolnya dinyalakan
+      if (_isTiltScrollEnabled) {
+        // Atur ambang batas agar tidak terlalu sensitif
+        const double threshold = 1.5;
+        // Atur kecepatan scroll berdasarkan kemiringan
+        final double scrollSpeed = (event.y.abs() - threshold) * 20.0;
+
+        if (event.y > threshold && _scrollController.hasClients) {
+          // Miring ke depan -> scroll ke bawah
+          _scrollController.animateTo(
+            _scrollController.offset + scrollSpeed,
+            duration: const Duration(milliseconds: 100),
+            curve: Curves.linear,
+          );
+        } else if (event.y < -threshold && _scrollController.hasClients) {
+          // Miring ke belakang -> scroll ke atas
+          _scrollController.animateTo(
+            _scrollController.offset - scrollSpeed,
+            duration: const Duration(milliseconds: 100),
+            curve: Curves.linear,
+          );
+        }
+      }
+    });
+  }
+
+  void _toggleTiltScroll() {
+    setState(() {
+      _isTiltScrollEnabled = !_isTiltScrollEnabled;
+    });
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          _isTiltScrollEnabled
+              ? 'Fitur "Miringkan untuk Gulir" Aktif'
+              : 'Fitur "Miringkan untuk Gulir" Nonaktif',
+        ),
+        backgroundColor: _isTiltScrollEnabled ? primaryColor : Colors.redAccent,
+      ),
+    );
   }
 
   Future<void> _initServices() async {
@@ -739,6 +792,16 @@ class _HomePageState extends State<HomePage> {
         ),
         actions: [
           if (_selectedIndex == 0) ...[
+            IconButton(
+              tooltip: 'Miringkan untuk Gulir',
+              onPressed: _toggleTiltScroll,
+              icon: Icon(
+                _isTiltScrollEnabled
+                    ? Icons.screen_rotation_alt_rounded
+                    : Icons.screen_rotation_alt_outlined,
+                color: _isTiltScrollEnabled ? accentColor : Colors.white,
+              ),
+            ),
             Stack(
               children: [
                 IconButton(
@@ -982,6 +1045,7 @@ class _HomePageState extends State<HomePage> {
               }
 
               return GridView.builder(
+                controller: _scrollController, // <-- INI DIA
                 padding: const EdgeInsets.symmetric(
                   horizontal: 16,
                   vertical: 12,

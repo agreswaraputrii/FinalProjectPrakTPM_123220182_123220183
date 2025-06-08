@@ -11,6 +11,7 @@ import 'success_page.dart';
 import '../models/order_model.dart';
 import '../models/user_model.dart';
 import '../models/notification_model.dart';
+import '../services/local_notification_service.dart'; // Import service notifikasi
 import '../services/order_service.dart';
 import '../services/notification_service.dart';
 import '../services/auth_service.dart';
@@ -355,6 +356,39 @@ class _CheckoutPageState extends State<CheckoutPage> {
         context,
         listen: false,
       ).addOrder(newOrder);
+
+      // 1. Notifikasi In-App (yang sudah Anda miliki)
+      await _notificationService.addNotification(
+        targetUsername: _currentUser!.username,
+        type: NotificationType.orderPaid,
+        title: 'Pembayaran Berhasil!',
+        body:
+            'Pesanan Anda #${newOrder.orderId.substring(0, 8)} telah berhasil dibayar.',
+        referenceId: newOrder.orderId,
+      );
+      await _notificationService.addNotification(
+        targetUsername: actualSellerUsername,
+        type: NotificationType.newOrder,
+        title: 'Pesanan Baru Masuk!',
+        body: 'Ada pesanan baru dari ${_currentUser!.fullName}.',
+        referenceId: newOrder.orderId,
+      );
+
+      // 2. Notifikasi Push (yang baru kita tambahkan)
+      // Untuk Pembeli
+      await LocalNotificationService.showNotification(
+        id: newOrder.hashCode, // Gunakan ID unik
+        title: 'Pembayaran Berhasil!',
+        body:
+            'Pesanan Anda #${newOrder.orderId.substring(0, 8)} sedang diproses oleh penjual.',
+      );
+      // Untuk Penjual (Anda bisa menambahkan logika agar ini hanya muncul jika penjualnya bukan user saat ini)
+      // ID harus berbeda agar tidak menimpa notifikasi pembeli
+      await LocalNotificationService.showNotification(
+        id: newOrder.hashCode + 1,
+        title: 'Pesanan Baru!',
+        body: 'Anda menerima pesanan baru dari ${_currentUser!.fullName}.',
+      );
 
       // 5. Buat Notifikasi (logika notifikasi Anda sudah bagus)
       await _notificationService.addNotification(

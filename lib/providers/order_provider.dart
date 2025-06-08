@@ -4,6 +4,7 @@ import 'package:hive/hive.dart';
 import '../models/order_model.dart';
 import '../models/user_model.dart';
 import '../services/order_service.dart';
+import '../services/local_notification_service.dart'; // Import service notifikasi
 
 class OrderProvider with ChangeNotifier {
   late OrderService _orderService;
@@ -43,7 +44,33 @@ class OrderProvider with ChangeNotifier {
     final index = _orders.indexWhere((order) => order.orderId == orderId);
     if (index != -1) {
       _orders[index].status = newStatus;
-      // Beri tahu semua widget yang mendengarkan untuk update UI
+      // --- PERUBAHAN: Kirim notifikasi push ke pembeli ---
+      String notificationTitle = 'Status Pesanan Berubah';
+      String notificationBody =
+          'Status pesanan #${orderId.substring(0, 8)} Anda telah diperbarui menjadi ${newStatus.name}.';
+
+      // Pesan yang lebih ramah pengguna
+      switch (newStatus) {
+        case OrderStatus.confirmed:
+          notificationBody = 'Pesanan Anda telah dikonfirmasi oleh penjual.';
+          break;
+        case OrderStatus.shipped:
+          notificationBody = 'Kabar baik! Pesanan Anda telah dikirim.';
+          break;
+        case OrderStatus.delivered:
+          notificationTitle = 'Pesanan Telah Tiba!';
+          notificationBody = 'Jangan lupa konfirmasi penerimaan pesanan Anda.';
+          break;
+        default:
+          break;
+      }
+
+      await LocalNotificationService.showNotification(
+        id: orderId.hashCode, // Gunakan ID unik dari order
+        title: notificationTitle,
+        body: notificationBody,
+      );
+
       notifyListeners();
     }
   }
