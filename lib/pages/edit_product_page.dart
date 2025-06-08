@@ -2,12 +2,13 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'dart:ui'; // For BackdropFilter
 
 import '../models/product_model.dart';
 import '../providers/product_provider.dart';
 
 class EditProductPage extends StatefulWidget {
-  final ProductModel product; // Menerima objek produk yang akan diedit
+  final ProductModel product;
 
   const EditProductPage({super.key, required this.product});
 
@@ -17,149 +18,123 @@ class EditProductPage extends StatefulWidget {
 
 class _EditProductPageState extends State<EditProductPage> {
   final _formKey = GlobalKey<FormState>();
+
+  // Controller disesuaikan dengan AddProductPage
   late TextEditingController _titleController;
   late TextEditingController _descriptionController;
-  late TextEditingController _categoryController;
   late TextEditingController _priceController;
-  late TextEditingController _discountPercentageController;
-  late TextEditingController _ratingController;
+  late TextEditingController _discountController;
   late TextEditingController _stockController;
+  late TextEditingController _imageUrlController;
+  late TextEditingController _moqController;
   late TextEditingController _tagsController;
-  late TextEditingController _weightController;
-  late TextEditingController _warrantyInformationController;
-  late TextEditingController _shippingInformationController;
-  late TextEditingController _returnPolicyController;
-  late TextEditingController _minimumOrderQuantityController;
-  late TextEditingController _thumbnailController;
 
-  // Dropdown for availabilityStatus
-  final List<String> _availabilityStatusOptions = [
-    'In Stock',
-    'Out of Stock',
-    'Low Stock',
-    'Coming Soon',
+  // Pilihan untuk Dropdown Pengiriman
+  final List<String> _shippingOptions = [
+    'Pengiriman Reguler',
+    'Gratis Ongkir (Free Shipping)',
   ];
-  String? _selectedAvailabilityStatus;
+  late String _selectedShipping;
+
+  // Skema Warna Konsisten
+  final Color primaryColor = const Color(0xFF2E7D32);
+  final Color accentColor = const Color(0xFFFF6B35);
+  final Color backgroundColor = const Color(0xFFF1F8E9);
 
   @override
   void initState() {
     super.initState();
-    // Inisialisasi semua controller dengan data produk yang ada
-    _titleController = TextEditingController(text: widget.product.title);
+    _titleController = TextEditingController(text: widget.product.title ?? '');
     _descriptionController = TextEditingController(
-      text: widget.product.description,
+      text: widget.product.description ?? '',
     );
-    _categoryController = TextEditingController(text: widget.product.category);
     _priceController = TextEditingController(
-      text: widget.product.price.toString(),
+      text: (widget.product.price ?? 0.0).toString(),
     );
-    _discountPercentageController = TextEditingController(
-      text: widget.product.discountPercentage.toString(),
-    );
-    _ratingController = TextEditingController(
-      text: widget.product.rating.toString(),
+    _discountController = TextEditingController(
+      text: (widget.product.discountPercentage ?? 0.0).toString(),
     );
     _stockController = TextEditingController(
-      text: widget.product.stock.toString(),
+      text: (widget.product.stock ?? 0).toString(),
+    );
+    _imageUrlController = TextEditingController(
+      text: widget.product.thumbnail ?? '',
+    );
+    _moqController = TextEditingController(
+      text: (widget.product.minimumOrderQuantity ?? 1).toString(),
     );
     _tagsController = TextEditingController(
-      text: widget.product.tags.join(', '),
-    ); // Join list to string
-    _weightController = TextEditingController(
-      text: widget.product.weight.toString(),
+      text: (widget.product.tags ?? []).join(', '),
     );
-    _warrantyInformationController = TextEditingController(
-      text: widget.product.warrantyInformation,
-    );
-    _shippingInformationController = TextEditingController(
-      text: widget.product.shippingInformation,
-    );
-    _selectedAvailabilityStatus =
-        widget.product.availabilityStatus; // Set initial dropdown value
-    _returnPolicyController = TextEditingController(
-      text: widget.product.returnPolicy,
-    );
-    _minimumOrderQuantityController = TextEditingController(
-      text: widget.product.minimumOrderQuantity.toString(),
-    );
-    _thumbnailController = TextEditingController(
-      text: widget.product.thumbnail,
-    );
+
+    _selectedShipping =
+        _shippingOptions.contains(widget.product.shippingInformation)
+        ? widget.product.shippingInformation!
+        : _shippingOptions.first;
   }
 
   @override
   void dispose() {
     _titleController.dispose();
     _descriptionController.dispose();
-    _categoryController.dispose();
     _priceController.dispose();
-    _discountPercentageController.dispose();
-    _ratingController.dispose();
+    _discountController.dispose();
     _stockController.dispose();
+    _imageUrlController.dispose();
+    _moqController.dispose();
     _tagsController.dispose();
-    _weightController.dispose();
-    _warrantyInformationController.dispose();
-    _shippingInformationController.dispose();
-    _returnPolicyController.dispose();
-    _minimumOrderQuantityController.dispose();
-    _thumbnailController.dispose();
     super.dispose();
   }
 
   Future<void> _updateProduct() async {
-    if (_formKey.currentState!.validate()) {
-      final productProvider = Provider.of<ProductProvider>(
-        context,
-        listen: false,
-      );
+    if (!_formKey.currentState!.validate()) {
+      return;
+    }
 
-      // Buat objek ProductModel yang diperbarui
-      final updatedProduct = ProductModel(
-        id: widget.product.id, // ID harus tetap sama untuk operasi UPDATE
-        title: _titleController.text,
-        description: _descriptionController.text,
-        category: _categoryController.text,
-        price: double.parse(_priceController.text),
-        discountPercentage: double.parse(_discountPercentageController.text),
-        rating: double.parse(_ratingController.text),
-        stock: int.parse(_stockController.text),
-        tags: _tagsController.text
-            .split(',')
-            .map((e) => e.trim())
-            .where((e) => e.isNotEmpty)
-            .toList(),
-        weight: double.parse(_weightController.text),
-        // Assume dimensions are not editable on this page, retain original
-        dimensions: widget.product.dimensions,
-        warrantyInformation: _warrantyInformationController.text,
-        shippingInformation: _shippingInformationController.text,
-        availabilityStatus: _selectedAvailabilityStatus!,
-        // Assume reviews are not editable on this page, retain original
-        reviews: widget.product.reviews,
-        returnPolicy: _returnPolicyController.text,
-        minimumOrderQuantity: int.parse(_minimumOrderQuantityController.text),
-        // For images, if you only have a thumbnail input, make sure images list is consistent
-        images: _thumbnailController.text.isNotEmpty
-            ? [_thumbnailController.text]
-            : [],
-        thumbnail: _thumbnailController.text,
-        quantity: widget
-            .product
-            .quantity, // Quantity from cart is irrelevant for product edit
-      );
+    final productProvider = context.read<ProductProvider>();
+    final stock = int.tryParse(_stockController.text) ?? 0;
 
-      // Call updateProduct on the provider.
-      // This method now expects a String ID.
-      final success = await productProvider.updateProduct(
-        widget.product.id,
-        updatedProduct,
-      );
+    final updatedProduct = ProductModel(
+      id: widget.product.id,
+      title: _titleController.text,
+      description: _descriptionController.text,
+      price: double.tryParse(_priceController.text) ?? 0.0,
+      stock: stock,
+      thumbnail: _imageUrlController.text,
+      images: [_imageUrlController.text],
+      discountPercentage: double.tryParse(_discountController.text) ?? 0.0,
+      minimumOrderQuantity: int.tryParse(_moqController.text) ?? 1,
+      shippingInformation: _selectedShipping,
+      tags: _tagsController.text
+          .split(',')
+          .map((tag) => tag.trim())
+          .where((t) => t.isNotEmpty)
+          .toList(),
 
+      category: widget.product.category,
+      rating: widget.product.rating,
+      uploaderUsername: widget.product.uploaderUsername,
+      availabilityStatus: stock > 0 ? 'In Stock' : 'Out of Stock',
+      reviews: widget.product.reviews,
+      weight: widget.product.weight,
+      dimensions: widget.product.dimensions,
+      warrantyInformation: widget.product.warrantyInformation,
+      returnPolicy: widget.product.returnPolicy,
+    );
+
+    final success = await productProvider.updateProduct(
+      widget.product.id,
+      updatedProduct,
+    );
+
+    if (mounted) {
       if (success) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Produk berhasil diperbarui!')),
+          const SnackBar(
+            content: Text('Produk berhasil diperbarui!'),
+            backgroundColor: Colors.green,
+          ),
         );
-        // Pop the page and potentially return the updated product
         Navigator.pop(context, updatedProduct);
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -176,252 +151,242 @@ class _EditProductPageState extends State<EditProductPage> {
 
   @override
   Widget build(BuildContext context) {
-    final productProvider = Provider.of<ProductProvider>(context);
+    final productProvider = context.watch<ProductProvider>();
+
     return Scaffold(
       appBar: AppBar(
         title: Text(
           'Edit Produk',
-          style: GoogleFonts.poppins(
-            fontWeight: FontWeight.w600,
-            fontSize: 20,
-            color: Colors.white,
-          ),
+          style: GoogleFonts.poppins(fontWeight: FontWeight.bold),
         ),
-        backgroundColor: const Color(0xFF4E342E),
+        backgroundColor: primaryColor,
+        foregroundColor: Colors.white,
+        elevation: 0,
       ),
-      body: productProvider.isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Form(
-                key: _formKey,
-                child: ListView(
-                  children: [
-                    TextFormField(
-                      controller: _titleController,
-                      decoration: const InputDecoration(
-                        labelText: 'Nama Produk',
-                      ),
-                      validator: (value) {
-                        if (value == null || value.isEmpty) {
-                          return 'Nama produk tidak boleh kosong';
-                        }
-                        return null;
-                      },
-                    ),
-                    TextFormField(
-                      controller: _descriptionController,
-                      decoration: const InputDecoration(
-                        labelText: 'Deskripsi Produk',
-                      ),
-                      maxLines: 3,
-                      validator: (value) {
-                        if (value == null || value.isEmpty) {
-                          return 'Deskripsi produk tidak boleh kosong';
-                        }
-                        return null;
-                      },
-                    ),
-                    TextFormField(
-                      controller: _categoryController,
-                      decoration: const InputDecoration(labelText: 'Kategori'),
-                      validator: (value) {
-                        if (value == null || value.isEmpty) {
-                          return 'Kategori tidak boleh kosong';
-                        }
-                        return null;
-                      },
-                    ),
-                    TextFormField(
-                      controller: _priceController,
-                      decoration: const InputDecoration(labelText: 'Harga'),
-                      keyboardType: TextInputType.number,
-                      validator: (value) {
-                        if (value == null ||
-                            value.isEmpty ||
-                            double.tryParse(value) == null) {
-                          return 'Masukkan harga yang valid';
-                        }
-                        return null;
-                      },
-                    ),
-                    TextFormField(
-                      controller: _discountPercentageController,
-                      decoration: const InputDecoration(
-                        labelText: 'Diskon (%)',
-                      ),
-                      keyboardType: TextInputType.number,
-                      validator: (value) {
-                        if (value == null ||
-                            value.isEmpty ||
-                            double.tryParse(value) == null ||
-                            double.parse(value) < 0 ||
-                            double.parse(value) > 100) {
-                          return 'Masukkan diskon yang valid (0-100)';
-                        }
-                        return null;
-                      },
-                    ),
-                    TextFormField(
-                      controller: _ratingController,
-                      decoration: const InputDecoration(
-                        labelText: 'Rating (0.0 - 5.0)',
-                      ),
-                      keyboardType: const TextInputType.numberWithOptions(
-                        decimal: true,
-                      ),
-                      validator: (value) {
-                        if (value == null ||
-                            value.isEmpty ||
-                            double.tryParse(value) == null ||
-                            double.parse(value) < 0 ||
-                            double.parse(value) > 5) {
-                          return 'Masukkan rating yang valid (0.0-5.0)';
-                        }
-                        return null;
-                      },
-                    ),
-                    TextFormField(
-                      controller: _stockController,
-                      decoration: const InputDecoration(labelText: 'Stok'),
-                      keyboardType: TextInputType.number,
-                      validator: (value) {
-                        if (value == null ||
-                            value.isEmpty ||
-                            int.tryParse(value) == null) {
-                          return 'Masukkan stok yang valid';
-                        }
-                        return null;
-                      },
-                    ),
-                    TextFormField(
-                      controller: _tagsController,
-                      decoration: const InputDecoration(
-                        labelText: 'Tags (pisahkan dengan koma)',
-                      ),
-                    ),
-                    TextFormField(
-                      controller: _weightController,
-                      decoration: const InputDecoration(
-                        labelText: 'Berat (kg)',
-                      ),
-                      keyboardType: const TextInputType.numberWithOptions(
-                        decimal: true,
-                      ),
-                      validator: (value) {
-                        if (value == null ||
-                            value.isEmpty ||
-                            double.tryParse(value) == null ||
-                            double.parse(value) < 0) {
-                          return 'Masukkan berat yang valid';
-                        }
-                        return null;
-                      },
-                    ),
-                    TextFormField(
-                      controller: _warrantyInformationController,
-                      decoration: const InputDecoration(
-                        labelText: 'Informasi Garansi',
-                      ),
-                    ),
-                    TextFormField(
-                      controller: _shippingInformationController,
-                      decoration: const InputDecoration(
-                        labelText: 'Informasi Pengiriman',
-                      ),
-                    ),
-                    DropdownButtonFormField<String>(
-                      value: _selectedAvailabilityStatus,
-                      decoration: const InputDecoration(
-                        labelText: 'Status Ketersediaan',
-                        border: OutlineInputBorder(),
-                      ),
-                      items: _availabilityStatusOptions
-                          .map(
-                            (status) => DropdownMenuItem(
-                              value: status,
-                              child: Text(status),
-                            ),
-                          )
-                          .toList(),
-                      onChanged: (newValue) {
-                        setState(() {
-                          _selectedAvailabilityStatus = newValue;
-                        });
-                      },
-                      validator: (value) {
-                        if (value == null || value.isEmpty) {
-                          return 'Pilih status ketersediaan';
-                        }
-                        return null;
-                      },
-                    ),
-                    const SizedBox(height: 16),
-                    TextFormField(
-                      controller: _returnPolicyController,
-                      decoration: const InputDecoration(
-                        labelText: 'Kebijakan Retur',
-                      ),
-                    ),
-                    TextFormField(
-                      controller: _minimumOrderQuantityController,
-                      decoration: const InputDecoration(
-                        labelText: 'Minimal Order Quantity',
-                      ),
-                      keyboardType: TextInputType.number,
-                      validator: (value) {
-                        if (value == null ||
-                            value.isEmpty ||
-                            int.tryParse(value) == null ||
-                            int.parse(value) < 1) {
-                          return 'Masukkan minimal order quantity yang valid';
-                        }
-                        return null;
-                      },
-                    ),
-                    TextFormField(
-                      controller: _thumbnailController,
-                      decoration: const InputDecoration(
-                        labelText: 'URL Gambar Thumbnail',
-                      ),
-                      validator: (value) {
-                        if (value == null || value.isEmpty) {
-                          return 'URL gambar thumbnail tidak boleh kosong';
-                        }
-                        return null;
-                      },
-                    ),
-                    const SizedBox(height: 20),
-                    ElevatedButton(
-                      onPressed: _updateProduct,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFFFF7043), // accentColor
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                      child: Text(
-                        'Perbarui Produk',
-                        style: GoogleFonts.poppins(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                    if (productProvider.errorMessage != null)
-                      Padding(
-                        padding: const EdgeInsets.only(top: 10),
-                        child: Text(
-                          productProvider.errorMessage!,
-                          style: const TextStyle(color: Colors.red),
-                        ),
-                      ),
-                  ],
-                ),
+      body: Stack(
+        children: [
+          Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [backgroundColor, Colors.white],
               ),
             ),
+          ),
+          Form(
+            key: _formKey,
+            child: ListView(
+              padding: const EdgeInsets.all(24.0),
+              children: [
+                _buildSectionTitle("Informasi Utama"),
+                _buildTextField(
+                  _titleController,
+                  'Nama Produk*',
+                  'Contoh: Apel Fuji Premium',
+                ),
+                _buildTextField(
+                  _descriptionController,
+                  'Deskripsi*',
+                  'Jelaskan keunggulan produk Anda',
+                  maxLines: 4,
+                ),
+                _buildTextField(
+                  _tagsController,
+                  'Tags (pisahkan koma)',
+                  'Contoh: organik, segar, promo',
+                ),
+
+                const SizedBox(height: 24),
+                _buildSectionTitle("Harga & Stok"),
+                _buildTextField(
+                  _priceController,
+                  'Harga (USD)*',
+                  'Contoh: 4.99',
+                  keyboardType: TextInputType.number,
+                ),
+                _buildTextField(
+                  _discountController,
+                  'Diskon (%)*',
+                  'Contoh: 10',
+                  keyboardType: TextInputType.number,
+                ),
+                _buildTextField(
+                  _stockController,
+                  'Jumlah Stok*',
+                  'Contoh: 150',
+                  keyboardType: TextInputType.number,
+                ),
+                _buildTextField(
+                  _moqController,
+                  'Minimal Pembelian*',
+                  'Contoh: 5',
+                  keyboardType: TextInputType.number,
+                ),
+
+                const SizedBox(height: 24),
+                _buildSectionTitle("Gambar & Pengiriman"),
+                _buildTextField(
+                  _imageUrlController,
+                  'URL Gambar Produk*',
+                  'URL gambar utama produk',
+                  keyboardType: TextInputType.url,
+                ),
+                _buildDropdownField(
+                  value: _selectedShipping,
+                  label: 'Info Pengiriman*',
+                  items: _shippingOptions,
+                  onChanged: (newValue) {
+                    if (newValue != null)
+                      setState(() => _selectedShipping = newValue);
+                  },
+                ),
+
+                const SizedBox(height: 32),
+                ElevatedButton.icon(
+                  onPressed: productProvider.isLoading ? null : _updateProduct,
+                  icon: const Icon(Icons.save_as_outlined),
+                  label: Text(
+                    productProvider.isLoading
+                        ? 'Menyimpan...'
+                        : 'Perbarui Produk',
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    textStyle: GoogleFonts.poppins(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w600,
+                    ),
+                    backgroundColor: accentColor,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          if (productProvider.isLoading)
+            Positioned.fill(
+              child: Container(
+                color: Colors.black.withOpacity(0.5),
+                child: const Center(child: CircularProgressIndicator()),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSectionTitle(String title) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12.0, top: 12.0),
+      child: Text(
+        title,
+        style: GoogleFonts.poppins(
+          fontSize: 20,
+          fontWeight: FontWeight.bold,
+          color: primaryColor,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTextField(
+    TextEditingController controller,
+    String label,
+    String hint, {
+    int maxLines = 1,
+    TextInputType keyboardType = TextInputType.text,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8.0),
+      child: TextFormField(
+        controller: controller,
+        maxLines: maxLines,
+        keyboardType: keyboardType,
+        style: GoogleFonts.poppins(
+          color: Colors.black87,
+        ), // Ensure text input is visible
+        decoration: InputDecoration(
+          labelText: label,
+          hintText: hint,
+          labelStyle: GoogleFonts.poppins(color: Colors.grey[800]),
+          hintStyle: GoogleFonts.poppins(),
+          filled: true,
+          fillColor: Colors.white.withOpacity(0.8),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide.none,
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide(color: Colors.grey.shade300),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide(color: primaryColor, width: 2),
+          ),
+          floatingLabelBehavior: FloatingLabelBehavior.always,
+          alignLabelWithHint: maxLines > 1,
+        ),
+        validator: (value) {
+          if (label.endsWith('*') && (value == null || value.isEmpty)) {
+            return '${label.replaceAll('*', '')} tidak boleh kosong';
+          }
+          if (keyboardType == TextInputType.number ||
+              keyboardType == TextInputType.url) {
+            if (value != null && value.isNotEmpty) {
+              if (double.tryParse(value) == null &&
+                  keyboardType == TextInputType.number) {
+                return 'Masukkan angka yang valid';
+              }
+            }
+          }
+          return null;
+        },
+      ),
+    );
+  }
+
+  // Helper widget untuk dropdown
+  Widget _buildDropdownField({
+    required String value,
+    required String label,
+    required List<String> items,
+    required void Function(String?) onChanged,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8.0),
+      child: DropdownButtonFormField<String>(
+        value: value,
+        items: items.map((String item) {
+          return DropdownMenuItem<String>(value: item, child: Text(item));
+        }).toList(),
+        onChanged: onChanged,
+        // FIX: Menambahkan style dengan warna teks yang jelas
+        style: GoogleFonts.poppins(color: Colors.black87, fontSize: 16),
+        decoration: InputDecoration(
+          labelText: label,
+          labelStyle: GoogleFonts.poppins(color: Colors.grey[800]),
+          filled: true,
+          fillColor: Colors.white.withOpacity(0.8),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide.none,
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide(color: Colors.grey.shade300),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide(color: primaryColor, width: 2),
+          ),
+        ),
+        validator: (value) => value == null ? 'Pilih salah satu opsi' : null,
+      ),
     );
   }
 }

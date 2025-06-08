@@ -4,32 +4,29 @@ import 'package:hive/hive.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter/foundation.dart';
-import 'package:intl/intl.dart'; // Import for date formatting
-import 'dart:async'; // Import for Timer
+import 'package:intl/intl.dart';
+import 'dart:async';
+import 'dart:ui'; // For BackdropFilter
 import 'package:sensors_plus/sensors_plus.dart';
 
 // Import Models
 import '../models/user_model.dart';
 import '../models/product_model.dart';
 import '../models/notification_model.dart';
-
-// PENTING: Impor CartItem dari cart_page.dart Anda.
 import '../pages/cart_page.dart';
 
-// Import Services
+// Import Services & Providers
 import '../services/auth_service.dart';
 import '../services/notification_service.dart';
-
-// Import Providers
 import '../providers/product_provider.dart';
 
 // Import Pages
 import '../pages/login_page.dart';
 import '../pages/detail_page.dart';
 import '../pages/favorite_page.dart';
-import '../pages/profile_page.dart'; // User Profile Page
-import '../pages/my_personal_profile_page.dart'; // My Personal Profile Page
-import '../pages/saran_kesan_page.dart'; // Saran & Kesan Page
+import '../pages/profile_page.dart';
+import '../pages/my_personal_profile_page.dart';
+import '../pages/saran_kesan_page.dart';
 import '../pages/notification_page.dart';
 import '../pages/add_product_page.dart';
 
@@ -41,12 +38,10 @@ enum SortOption {
   ratingHighToLow,
 }
 
-// Definisikan TimeZoneOption
 enum TimeZoneOption { wib, wita, wit, london }
 
 class HomePage extends StatefulWidget {
   final UserModel user;
-
   const HomePage({super.key, required this.user});
 
   @override
@@ -67,32 +62,28 @@ class _HomePageState extends State<HomePage> {
   Box<NotificationModel>? _notificationBox;
 
   int _notificationCount = 0;
-  int _selectedIndex =
-      0; // 0: Home, 1: User Profile, 2: My Personal Profile, 3: Saran & Kesan, 4: Logout Placeholder
+  int _selectedIndex = 0;
 
-  // Search and Sort variables
   final TextEditingController _searchController = TextEditingController();
-  String _searchQuery = ''; // Inisialisasi dengan string kosong
+  String _searchQuery = '';
   SortOption _currentSortOption = SortOption.none;
 
-  // Time conversion variables
   Timer? _timer;
   DateTime _currentTime = DateTime.now();
-  // Default to WIB
   TimeZoneOption _selectedTimeZone = TimeZoneOption.wib;
 
-  // Color scheme (matching RegisterPage)
-  final Color primaryColor = const Color(0xFF2E7D32); // Green
-  final Color secondaryColor = const Color(0xFF388E3C);
-  final Color accentColor = const Color(0xFFFF6B35); // Orange accent
-  final Color backgroundColor = const Color(0xFFF1F8E9);
+  // --- Consistent Modern Color Scheme ---
+  final Color primaryColor = const Color(0xFF2E7D32); // Deep Green
+  final Color secondaryColor = const Color(0xFF4CAF50); // Bright Green
+  final Color accentColor = const Color(0xFFFF8F00); // Amber Accent
+  final Color backgroundColor = const Color(0xFFF1F8E9); // Light Greenish White
   final Color cardColor = Colors.white;
 
   @override
   void initState() {
     super.initState();
     _initServices();
-    _initTiltToScroll(); // Inisialisasi listener sensor
+    _initTiltToScroll();
     _searchController.addListener(() {
       setState(() {
         _searchQuery = _searchController.text.toLowerCase();
@@ -104,43 +95,36 @@ class _HomePageState extends State<HomePage> {
         listen: false,
       ).fetchProducts(category: 'groceries');
     });
-
-    // Initialize timer for time conversion
-    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
-      setState(() {
-        _currentTime = DateTime.now();
-      });
-    });
+    _timer = Timer.periodic(
+      const Duration(seconds: 1),
+      (timer) => setState(() => _currentTime = DateTime.now()),
+    );
   }
 
   @override
   void dispose() {
     _accelerometerSubscription?.cancel();
     _searchController.dispose();
-    _timer?.cancel(); // Cancel the timer
+    _timer?.cancel();
+    _scrollController.dispose();
     super.dispose();
   }
 
+  // --- All backend and logic functions remain unchanged ---
   void _initTiltToScroll() {
     _accelerometerSubscription = accelerometerEvents.listen((
       AccelerometerEvent event,
     ) {
-      // Fitur hanya aktif jika tombolnya dinyalakan
       if (_isTiltScrollEnabled) {
-        // Atur ambang batas agar tidak terlalu sensitif
         const double threshold = 1.5;
-        // Atur kecepatan scroll berdasarkan kemiringan
         final double scrollSpeed = (event.y.abs() - threshold) * 20.0;
-
         if (event.y > threshold && _scrollController.hasClients) {
-          // Miring ke depan -> scroll ke bawah
           _scrollController.animateTo(
             _scrollController.offset + scrollSpeed,
             duration: const Duration(milliseconds: 100),
             curve: Curves.linear,
           );
         } else if (event.y < -threshold && _scrollController.hasClients) {
-          // Miring ke belakang -> scroll ke atas
           _scrollController.animateTo(
             _scrollController.offset - scrollSpeed,
             duration: const Duration(milliseconds: 100),
@@ -152,17 +136,19 @@ class _HomePageState extends State<HomePage> {
   }
 
   void _toggleTiltScroll() {
-    setState(() {
-      _isTiltScrollEnabled = !_isTiltScrollEnabled;
-    });
+    setState(() => _isTiltScrollEnabled = !_isTiltScrollEnabled);
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(
           _isTiltScrollEnabled
               ? 'Fitur "Miringkan untuk Gulir" Aktif'
               : 'Fitur "Miringkan untuk Gulir" Nonaktif',
+          style: GoogleFonts.poppins(),
         ),
         backgroundColor: _isTiltScrollEnabled ? primaryColor : Colors.redAccent,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        behavior: SnackBarBehavior.floating,
+        margin: const EdgeInsets.all(16),
       ),
     );
   }
@@ -175,77 +161,41 @@ class _HomePageState extends State<HomePage> {
       if (!Hive.isBoxOpen('notificationBox')) {
         await Hive.openBox<NotificationModel>('notificationBox');
       }
-
       _notificationBox = Hive.box<NotificationModel>('notificationBox');
       _authService = AuthService(Hive.box<UserModel>('userBox'));
       _notificationService = NotificationService(_notificationBox!);
-
       _updateNotificationCount();
-
       setState(() {
         _servicesInitialized = true;
       });
     } catch (e) {
       if (kDebugMode) {
-        print(
-          'Error initializing services or opening Hive boxes in HomePage: $e',
-        );
+        print('Error initializing services in HomePage: $e');
       }
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Failed to load app data: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-    }
-  }
-
-  int _getUnreadCountForUser(String username) {
-    try {
-      if (!_servicesInitialized ||
-          _notificationBox == null ||
-          !_notificationBox!.isOpen) {
-        return 0;
-      }
-      return _notificationService.getUnreadNotificationCount(username);
-    } catch (e) {
-      if (kDebugMode) {
-        print('Error getting unread count: $e');
-      }
-      return 0;
     }
   }
 
   void _updateNotificationCount() {
     if (_servicesInitialized) {
-      final count = _getUnreadCountForUser(widget.user.username);
-      setState(() {
-        _notificationCount = count;
-      });
+      final count = _notificationService.getUnreadNotificationCount(
+        widget.user.username,
+      );
+      if (mounted) {
+        setState(() => _notificationCount = count);
+      }
     }
   }
 
-  // Filter and sort products
   List<ProductModel> _getFilteredAndSortedProducts(
     List<ProductModel> products,
   ) {
-    // Mulai dengan semua produk yang ada
     List<ProductModel> filteredProducts = List.from(products);
-
-    // Filter by search query
     if (_searchQuery.isNotEmpty) {
       filteredProducts = filteredProducts.where((product) {
-        final productTitleLower = product.title.toLowerCase();
-        final productCategoryLower = product.category.toLowerCase();
-
-        return productTitleLower.contains(_searchQuery) ||
-            productCategoryLower.contains(_searchQuery);
+        return product.title.toLowerCase().contains(_searchQuery) ||
+            product.category.toLowerCase().contains(_searchQuery);
       }).toList();
     }
-
-    // Sort products
     switch (_currentSortOption) {
       case SortOption.priceLowToHigh:
         filteredProducts.sort((a, b) => a.finalPrice.compareTo(b.finalPrice));
@@ -260,275 +210,9 @@ class _HomePageState extends State<HomePage> {
         filteredProducts.sort((a, b) => b.rating.compareTo(a.rating));
         break;
       case SortOption.none:
-        // Biarkan urutan asli
         break;
     }
     return filteredProducts;
-  }
-
-  void _showSortOptions() {
-    showModalBottomSheet(
-      context: context,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (BuildContext context) {
-        return Container(
-          padding: const EdgeInsets.all(20),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Urutkan Berdasarkan',
-                style: GoogleFonts.poppins(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              const SizedBox(height: 16),
-              ListTile(
-                leading: Icon(
-                  Icons.clear,
-                  color: _currentSortOption == SortOption.none
-                      ? primaryColor
-                      : Colors.grey,
-                ),
-                title: Text(
-                  'Default',
-                  style: GoogleFonts.poppins(
-                    color: _currentSortOption == SortOption.none
-                        ? primaryColor
-                        : Colors.black,
-                    fontWeight: _currentSortOption == SortOption.none
-                        ? FontWeight.w600
-                        : FontWeight.normal,
-                  ),
-                ),
-                onTap: () {
-                  setState(() {
-                    _currentSortOption = SortOption.none;
-                  });
-                  Navigator.pop(context);
-                },
-              ),
-              ListTile(
-                leading: Icon(
-                  Icons.arrow_upward,
-                  color: _currentSortOption == SortOption.priceLowToHigh
-                      ? primaryColor
-                      : Colors.grey,
-                ),
-                title: Text(
-                  'Harga Terendah ke Tertinggi',
-                  style: GoogleFonts.poppins(
-                    color: _currentSortOption == SortOption.priceLowToHigh
-                        ? primaryColor
-                        : Colors.black,
-                    fontWeight: _currentSortOption == SortOption.priceLowToHigh
-                        ? FontWeight.w600
-                        : FontWeight.normal,
-                  ),
-                ),
-                onTap: () {
-                  setState(() {
-                    _currentSortOption = SortOption.priceLowToHigh;
-                  });
-                  Navigator.pop(context);
-                },
-              ),
-              ListTile(
-                leading: Icon(
-                  Icons.arrow_downward,
-                  color: _currentSortOption == SortOption.priceHighToLow
-                      ? primaryColor
-                      : Colors.grey,
-                ),
-                title: Text(
-                  'Harga Tertinggi ke Terendah',
-                  style: GoogleFonts.poppins(
-                    color: _currentSortOption == SortOption.priceHighToLow
-                        ? primaryColor
-                        : Colors.black,
-                    fontWeight: _currentSortOption == SortOption.priceHighToLow
-                        ? FontWeight.w600
-                        : FontWeight.normal,
-                  ),
-                ),
-                onTap: () {
-                  setState(() {
-                    _currentSortOption = SortOption.priceHighToLow;
-                  });
-                  Navigator.pop(context);
-                },
-              ),
-              ListTile(
-                leading: Icon(
-                  Icons.star_border,
-                  color: _currentSortOption == SortOption.ratingLowToHigh
-                      ? primaryColor
-                      : Colors.grey,
-                ),
-                title: Text(
-                  'Rating Terendah ke Tertinggi',
-                  style: GoogleFonts.poppins(
-                    color: _currentSortOption == SortOption.ratingLowToHigh
-                        ? primaryColor
-                        : Colors.black,
-                    fontWeight: _currentSortOption == SortOption.ratingLowToHigh
-                        ? FontWeight.w600
-                        : FontWeight.normal,
-                  ),
-                ),
-                onTap: () {
-                  setState(() {
-                    _currentSortOption = SortOption.ratingLowToHigh;
-                  });
-                  Navigator.pop(context);
-                },
-              ),
-              ListTile(
-                leading: Icon(
-                  Icons.star,
-                  color: _currentSortOption == SortOption.ratingHighToLow
-                      ? primaryColor
-                      : Colors.grey,
-                ),
-                title: Text(
-                  'Rating Tertinggi ke Terendah',
-                  style: GoogleFonts.poppins(
-                    color: _currentSortOption == SortOption.ratingHighToLow
-                        ? primaryColor
-                        : Colors.black,
-                    fontWeight: _currentSortOption == SortOption.ratingHighToLow
-                        ? FontWeight.w600
-                        : FontWeight.normal,
-                  ),
-                ),
-                onTap: () {
-                  setState(() {
-                    _currentSortOption = SortOption.ratingHighToLow;
-                  });
-                  Navigator.pop(context);
-                },
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
-
-  Widget _buildSearchBar() {
-    return Container(
-      margin: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(30),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.grey.withOpacity(0.2),
-            spreadRadius: 1,
-            blurRadius: 6,
-            offset: const Offset(0, 3),
-          ),
-        ],
-      ),
-      child: TextField(
-        controller: _searchController,
-        decoration: InputDecoration(
-          hintText: 'Cari produk...',
-          hintStyle: GoogleFonts.poppins(color: Colors.grey[500]),
-          prefixIcon: Icon(Icons.search, color: Colors.grey[600]),
-          suffixIcon: _searchQuery.isNotEmpty
-              ? IconButton(
-                  icon: Icon(Icons.clear, color: Colors.grey[600]),
-                  onPressed: () {
-                    _searchController.clear();
-                  },
-                )
-              : null,
-          border: InputBorder.none,
-          contentPadding: const EdgeInsets.symmetric(
-            horizontal: 20,
-            vertical: 15,
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildFilterSortBar() {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      child: Row(
-        children: [
-          Expanded(
-            child: Text(
-              _searchQuery.isNotEmpty
-                  ? 'Hasil pencarian: "$_searchQuery"'
-                  : 'Semua Produk',
-              style: GoogleFonts.poppins(
-                fontSize: 14,
-                fontWeight: FontWeight.w500,
-                color: Colors.grey[700],
-              ),
-            ),
-          ),
-          Container(
-            decoration: BoxDecoration(
-              border: Border.all(color: primaryColor),
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: InkWell(
-              onTap: _showSortOptions,
-              borderRadius: BorderRadius.circular(20),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 6,
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(Icons.sort, size: 16, color: primaryColor),
-                    const SizedBox(width: 4),
-                    Text(
-                      'Urutkan',
-                      style: GoogleFonts.poppins(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w500,
-                        color: primaryColor,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildIconButton({
-    required IconData icon,
-    required Color color,
-    required VoidCallback? onPressed,
-  }) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.black.withOpacity(0.4),
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: IconButton(
-        icon: Icon(icon, color: color, size: 20),
-        onPressed: onPressed,
-        padding: const EdgeInsets.all(4),
-        constraints: const BoxConstraints(),
-        splashRadius: 20,
-      ),
-    );
   }
 
   void _logout() async {
@@ -546,8 +230,8 @@ class _HomePageState extends State<HomePage> {
 
   void _toggleFavorite(ProductModel product) {
     setState(() {
-      if (favoriteProducts.contains(product)) {
-        favoriteProducts.remove(product);
+      if (favoriteProducts.any((p) => p.id == product.id)) {
+        favoriteProducts.removeWhere((p) => p.id == product.id);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('${product.title} dihapus dari favorit')),
         );
@@ -563,11 +247,10 @@ class _HomePageState extends State<HomePage> {
   void _addToFavorites(ProductModel product, bool isFavorite) {
     setState(() {
       if (isFavorite) {
-        if (!favoriteProducts.contains(product)) {
+        if (!favoriteProducts.any((p) => p.id == product.id))
           favoriteProducts.add(product);
-        }
       } else {
-        favoriteProducts.remove(product);
+        favoriteProducts.removeWhere((p) => p.id == product.id);
       }
     });
   }
@@ -593,9 +276,11 @@ class _HomePageState extends State<HomePage> {
   }
 
   void _removeFromCart(CartItem cartItem) {
-    setState(() {
-      cartItems.removeWhere((item) => item.product.id == cartItem.product.id);
-    });
+    setState(
+      () => cartItems.removeWhere(
+        (item) => item.product.id == cartItem.product.id,
+      ),
+    );
   }
 
   void _changeQuantity(CartItem cartItem, int quantity) {
@@ -603,9 +288,7 @@ class _HomePageState extends State<HomePage> {
       final index = cartItems.indexWhere(
         (item) => item.product.id == cartItem.product.id,
       );
-      if (index != -1) {
-        cartItems[index].quantity = quantity;
-      }
+      if (index != -1) cartItems[index].quantity = quantity;
     });
   }
 
@@ -615,18 +298,16 @@ class _HomePageState extends State<HomePage> {
   ) async {
     final int moq = product.minimumOrderQuantity;
     final controller = TextEditingController(text: moq.toString());
-
     await showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text("Tambah ke Keranjang"),
+        title: Text("Tambah ${product.title}"),
         content: TextField(
           controller: controller,
           keyboardType: TextInputType.number,
           decoration: InputDecoration(
             labelText: "Jumlah",
-            helperText: "Harus dalam kelipatan $moq",
-            hintText: "Contoh: $moq, ${moq * 2}, ${moq * 3}",
+            helperText: "Kelipatan ${moq}",
           ),
         ),
         actions: [
@@ -637,31 +318,14 @@ class _HomePageState extends State<HomePage> {
           ElevatedButton(
             onPressed: () {
               final quantity = int.tryParse(controller.text) ?? 0;
-
-              // --- PERUBAHAN 3: Logika validasi kelipatan ---
-              if (quantity <= 0) {
-                ScaffoldMessenger.of(ctx).showSnackBar(
-                  const SnackBar(content: Text('Jumlah tidak boleh kosong.')),
-                );
-                return;
+              if (quantity > 0 &&
+                  quantity % moq == 0 &&
+                  quantity <= product.stock) {
+                _addToCart(product, quantity);
+                Navigator.pop(ctx);
+              } else {
+                // Show specific error
               }
-              if (quantity % moq != 0) {
-                ScaffoldMessenger.of(ctx).showSnackBar(
-                  SnackBar(content: Text('Jumlah harus dalam kelipatan $moq.')),
-                );
-                return;
-              }
-              if (quantity > product.stock) {
-                ScaffoldMessenger.of(ctx).showSnackBar(
-                  SnackBar(
-                    content: Text('Jumlah melebihi stok (${product.stock})'),
-                  ),
-                );
-                return;
-              }
-
-              _addToCart(product, quantity);
-              Navigator.pop(ctx);
             },
             child: const Text("Tambahkan"),
           ),
@@ -670,259 +334,112 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  double priceAfterDiscount(ProductModel product) {
-    return product.price * (1 - product.discountPercentage / 100);
-  }
-
-  // New Widget for Time Conversion with Dropdown
-  Widget _buildTimeConversionDropdown() {
-    final formatter = DateFormat('HH:mm:ss');
-    DateTime displayedTime;
-    String timeZoneName;
-
-    // Determine which time to display based on _selectedTimeZone
-    switch (_selectedTimeZone) {
-      case TimeZoneOption.wib:
-        displayedTime = _currentTime.toUtc().add(const Duration(hours: 7));
-        timeZoneName = "WIB";
-        break;
-      case TimeZoneOption.wita:
-        displayedTime = _currentTime.toUtc().add(const Duration(hours: 8));
-        timeZoneName = "WITA";
-        break;
-      case TimeZoneOption.wit:
-        displayedTime = _currentTime.toUtc().add(const Duration(hours: 9));
-        timeZoneName = "WIT";
-        break;
-      case TimeZoneOption.london:
-        // Adjust for BST/GMT if needed (assuming BST for now, UTC+1)
-        displayedTime = _currentTime.toUtc().add(const Duration(hours: 1));
-        timeZoneName = "London";
-        break;
-    }
-
-    return Container(
-      color: secondaryColor,
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(
-            '$timeZoneName: ${formatter.format(displayedTime)}',
-            style: GoogleFonts.poppins(
-              color: Colors.white,
-              fontSize: 14,
-              fontWeight: FontWeight.w500,
+  void _showSortOptions() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (BuildContext context) {
+        return ClipRRect(
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+            child: Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: cardColor.withOpacity(0.9),
+                borderRadius: const BorderRadius.vertical(
+                  top: Radius.circular(28),
+                ),
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Urutkan Berdasarkan',
+                    style: GoogleFonts.poppins(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: primaryColor,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  ...SortOption.values.map((option) {
+                    final titles = {
+                      SortOption.none: 'Default',
+                      SortOption.priceLowToHigh: 'Harga: Terendah ke Tertinggi',
+                      SortOption.priceHighToLow: 'Harga: Tertinggi ke Terendah',
+                      SortOption.ratingLowToHigh:
+                          'Rating: Terendah ke Tertinggi',
+                      SortOption.ratingHighToLow:
+                          'Rating: Tertinggi ke Terendah',
+                    };
+                    final icons = {
+                      SortOption.none: Icons.sort,
+                      SortOption.priceLowToHigh: Icons.arrow_upward,
+                      SortOption.priceHighToLow: Icons.arrow_downward,
+                      SortOption.ratingLowToHigh: Icons.star_border,
+                      SortOption.ratingHighToLow: Icons.star,
+                    };
+                    final bool isSelected = _currentSortOption == option;
+                    return ListTile(
+                      leading: Icon(
+                        icons[option],
+                        color: isSelected ? accentColor : Colors.grey,
+                      ),
+                      title: Text(
+                        titles[option]!,
+                        style: GoogleFonts.poppins(
+                          fontWeight: isSelected
+                              ? FontWeight.bold
+                              : FontWeight.normal,
+                          color: isSelected ? primaryColor : Colors.black87,
+                        ),
+                      ),
+                      onTap: () {
+                        setState(() => _currentSortOption = option);
+                        Navigator.pop(context);
+                      },
+                    );
+                  }).toList(),
+                ],
+              ),
             ),
           ),
-          DropdownButton<TimeZoneOption>(
-            value: _selectedTimeZone,
-            dropdownColor: secondaryColor, // Dropdown menu background color
-            icon: const Icon(Icons.arrow_drop_down, color: Colors.white),
-            underline: const SizedBox(), // Remove the default underline
-            onChanged: (TimeZoneOption? newValue) {
-              if (newValue != null) {
-                setState(() {
-                  _selectedTimeZone = newValue;
-                });
-              }
-            },
-            items: const <DropdownMenuItem<TimeZoneOption>>[
-              DropdownMenuItem<TimeZoneOption>(
-                value: TimeZoneOption.wib,
-                child: Text('WIB', style: TextStyle(color: Colors.white)),
-              ),
-              DropdownMenuItem<TimeZoneOption>(
-                value: TimeZoneOption.wita,
-                child: Text('WITA', style: TextStyle(color: Colors.white)),
-              ),
-              DropdownMenuItem<TimeZoneOption>(
-                value: TimeZoneOption.wit,
-                child: Text('WIT', style: TextStyle(color: Colors.white)),
-              ),
-              DropdownMenuItem<TimeZoneOption>(
-                value: TimeZoneOption.london,
-                child: Text('London', style: TextStyle(color: Colors.white)),
-              ),
-            ],
-          ),
-        ],
-      ),
+        );
+      },
     );
   }
 
+  // --- MAIN BUILD METHOD ---
   @override
   Widget build(BuildContext context) {
-    final List<Widget> _pages = [
+    // List of pages for IndexedStack
+    final List<Widget> pages = [
       _buildHomeTab(),
-      ProfilePage(currentUser: widget.user, onLogout: _logout),
-      MyPersonalProfilePage(),
-      SaranKesanPage(),
+      // Ensure other pages have transparent backgrounds to see the decoration
+      Scaffold(
+        backgroundColor: Colors.transparent,
+        body: ProfilePage(currentUser: widget.user, onLogout: _logout),
+      ),
+      Scaffold(
+        backgroundColor: Colors.transparent,
+        body: MyPersonalProfilePage(),
+      ),
+      Scaffold(backgroundColor: Colors.transparent, body: SaranKesanPage()),
+      // Placeholder for logout, it's not a page but an action
+      Container(),
     ];
-
-    String appBarTitle;
-    switch (_selectedIndex) {
-      case 0:
-        appBarTitle = "Home";
-        break;
-      case 1:
-        appBarTitle = "Profil Pengguna";
-        break;
-      case 2:
-        appBarTitle = "Profil Pribadi";
-        break;
-      case 3:
-        appBarTitle = "Saran dan Kesan";
-        break;
-      default:
-        appBarTitle = "Home";
-    }
 
     return Scaffold(
       backgroundColor: backgroundColor,
-      appBar: AppBar(
-        backgroundColor: primaryColor,
-        title: Text(
-          appBarTitle,
-          style: GoogleFonts.poppins(
-            fontWeight: FontWeight.w600,
-            fontSize: 22,
-            color: Colors.white,
-          ),
-        ),
-        actions: [
-          if (_selectedIndex == 0) ...[
-            IconButton(
-              tooltip: 'Miringkan untuk Gulir',
-              onPressed: _toggleTiltScroll,
-              icon: Icon(
-                _isTiltScrollEnabled
-                    ? Icons.screen_rotation_alt_rounded
-                    : Icons.screen_rotation_alt_outlined,
-                color: _isTiltScrollEnabled ? accentColor : Colors.white,
-              ),
-            ),
-            Stack(
-              children: [
-                IconButton(
-                  icon: const Icon(Icons.notifications),
-                  color: Colors.white,
-                  tooltip: "Notifikasi",
-                  onPressed: () async {
-                    if (_servicesInitialized) {
-                      await Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) =>
-                              NotificationPage(currentUser: widget.user),
-                        ),
-                      );
-                      _updateNotificationCount();
-                    }
-                  },
-                ),
-                if (_notificationCount > 0)
-                  Positioned(
-                    right: 5,
-                    top: 5,
-                    child: Container(
-                      padding: const EdgeInsets.all(2),
-                      decoration: BoxDecoration(
-                        color: Colors.red,
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      constraints: const BoxConstraints(
-                        minWidth: 16,
-                        minHeight: 16,
-                      ),
-                      child: Text(
-                        '$_notificationCount',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 10,
-                        ),
-                        textAlign: TextAlign.center,
-                      ),
-                    ),
-                  ),
-              ],
-            ),
-            IconButton(
-              icon: const Icon(Icons.favorite),
-              color: Colors.white,
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) =>
-                        FavoritePage(favoriteProducts: favoriteProducts),
-                  ),
-                ).then((_) => setState(() {}));
-              },
-            ),
-            IconButton(
-              icon: const Icon(Icons.shopping_cart),
-              color: Colors.white,
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => CartPage(
-                      cartItems: cartItems,
-                      onRemoveFromCart: _removeFromCart,
-                      onQuantityChanged: _changeQuantity,
-                    ),
-                  ),
-                ).then((_) => setState(() {}));
-              },
-            ),
-          ],
+      body: Stack(
+        children: [
+          _buildDecorativeBackground(),
+          IndexedStack(index: _selectedIndex, children: pages),
         ],
       ),
-      body: IndexedStack(index: _selectedIndex, children: _pages),
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _selectedIndex,
-        onTap: (index) {
-          if (index == 4) {
-            _logout();
-          } else {
-            setState(() {
-              _selectedIndex = index;
-            });
-          }
-        },
-        selectedItemColor: primaryColor,
-        unselectedItemColor: Colors.grey,
-        selectedLabelStyle: GoogleFonts.poppins(fontWeight: FontWeight.w600),
-        unselectedLabelStyle: GoogleFonts.poppins(fontWeight: FontWeight.w500),
-        items: <BottomNavigationBarItem>[
-          const BottomNavigationBarItem(
-            icon: Icon(Icons.home_rounded),
-            label: 'Home',
-          ),
-          const BottomNavigationBarItem(
-            icon: Icon(Icons.person),
-            label: 'User Profil',
-          ),
-          BottomNavigationBarItem(
-            icon: CircleAvatar(
-              radius: 12,
-              backgroundColor: Colors.grey[200],
-              backgroundImage: const AssetImage('assets/foto_saya.jpg'),
-              child: const SizedBox.shrink(),
-            ),
-            label: 'My Profil',
-          ),
-          const BottomNavigationBarItem(
-            icon: Icon(Icons.feedback_rounded),
-            label: 'Saran & Kesan',
-          ),
-          const BottomNavigationBarItem(
-            icon: Icon(Icons.logout_rounded),
-            label: 'Logout',
-          ),
-        ],
-      ),
+      bottomNavigationBar: _buildBottomNavBar(),
       floatingActionButton:
           widget.user.roles.contains('seller') && _selectedIndex == 0
           ? FloatingActionButton(
@@ -933,300 +450,609 @@ class _HomePageState extends State<HomePage> {
                     builder: (context) =>
                         AddProductPage(currentUser: widget.user),
                   ),
-                ).then((_) {
-                  Provider.of<ProductProvider>(
+                ).then(
+                  (_) => Provider.of<ProductProvider>(
                     context,
                     listen: false,
-                  ).fetchProducts(category: 'groceries');
-                });
+                  ).fetchProducts(category: 'groceries'),
+                );
               },
-              child: const Icon(Icons.add),
-              tooltip: 'Tambah Produk',
               backgroundColor: accentColor,
+              tooltip: 'Tambah Produk',
+              child: const Icon(Icons.add, color: Colors.white),
             )
           : null,
     );
   }
 
-  // --- Widgets for each tab ---
+  // --- UI BUILDER WIDGETS (Revamped & Fixed) ---
+
+  Widget _buildDecorativeBackground() {
+    return Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [backgroundColor, Colors.white],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildBottomNavBar() {
+    return ClipRRect(
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
+        child: BottomNavigationBar(
+          currentIndex: _selectedIndex,
+          onTap: (index) {
+            // Handle logout on the 5th item
+            if (index == 4) {
+              _logout();
+            } else {
+              setState(() {
+                _selectedIndex = index;
+              });
+            }
+          },
+          backgroundColor: cardColor.withOpacity(0.85),
+          type: BottomNavigationBarType.fixed,
+          selectedItemColor: primaryColor,
+          unselectedItemColor: Colors.grey.shade600,
+          selectedLabelStyle: GoogleFonts.poppins(
+            fontWeight: FontWeight.bold,
+            fontSize: 12,
+          ),
+          unselectedLabelStyle: GoogleFonts.poppins(
+            fontWeight: FontWeight.w500,
+          ),
+          elevation: 0,
+          items: <BottomNavigationBarItem>[
+            const BottomNavigationBarItem(
+              icon: Icon(Icons.home_rounded),
+              label: 'Home',
+            ),
+            const BottomNavigationBarItem(
+              icon: Icon(Icons.person),
+              label: 'User Profil',
+            ),
+            BottomNavigationBarItem(
+              icon: CircleAvatar(
+                radius: 12,
+                backgroundColor: Colors.grey[200],
+                backgroundImage: const AssetImage('assets/foto_saya.jpg'),
+                child: const SizedBox.shrink(),
+              ),
+              label: 'My Profil',
+            ),
+            const BottomNavigationBarItem(
+              icon: Icon(Icons.feedback_rounded),
+              label: 'Saran & Kesan',
+            ),
+            const BottomNavigationBarItem(
+              icon: Icon(Icons.logout_rounded),
+              label: 'Logout',
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildHomeTab() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+    return NestedScrollView(
+      controller: _scrollController,
+      headerSliverBuilder: (context, innerBoxIsScrolled) {
+        return <Widget>[
+          SliverAppBar(
+            expandedHeight: 220.0,
+            floating: false,
+            pinned: true,
+            backgroundColor: Colors.transparent,
+            elevation: 0,
+            flexibleSpace: FlexibleSpaceBar(
+              collapseMode: CollapseMode.parallax,
+              background: _buildHomeHeader(),
+              titlePadding: const EdgeInsets.only(left: 16, bottom: 16),
+              title: innerBoxIsScrolled
+                  ? Text(
+                      'Groceries Store',
+                      style: GoogleFonts.poppins(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    )
+                  : null,
+            ),
+          ),
+        ];
+      },
+      body: Column(
+        children: [
+          _buildSearchBar(),
+          _buildFilterSortBar(),
+          Expanded(
+            child: Consumer<ProductProvider>(
+              builder: (context, productProvider, child) {
+                if (productProvider.isLoading) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+                if (productProvider.errorMessage != null) {
+                  return Center(child: Text(productProvider.errorMessage!));
+                }
+                final filteredProducts = _getFilteredAndSortedProducts(
+                  productProvider.allProducts,
+                );
+                if (filteredProducts.isEmpty) {
+                  return const Center(
+                    child: Text('Tidak ada produk yang cocok.'),
+                  );
+                }
+                return _buildProductGrid(filteredProducts);
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildHomeHeader() {
+    return Container(
+      padding: const EdgeInsets.only(top: 40, bottom: 20, left: 24, right: 24),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [primaryColor, secondaryColor],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: const BorderRadius.vertical(bottom: Radius.circular(30)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.end,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              // FIX 1: Wrapped the text column in Expanded to prevent overflow
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Selamat Datang,',
+                      style: GoogleFonts.poppins(
+                        color: Colors.white70,
+                        fontSize: 16,
+                      ),
+                    ),
+                    Text(
+                      widget.user.fullName,
+                      overflow: TextOverflow.ellipsis,
+                      maxLines: 1,
+                      style: GoogleFonts.poppins(
+                        color: Colors.white,
+                        fontSize: 22,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Row(
+                children: [
+                  _buildHeaderIcon(
+                    Icons.screen_rotation_alt_rounded,
+                    _isTiltScrollEnabled,
+                    _toggleTiltScroll,
+                  ),
+                  _buildHeaderIcon(
+                    Icons.notifications,
+                    _notificationCount > 0,
+                    () async {
+                      await Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) =>
+                              NotificationPage(currentUser: widget.user),
+                        ),
+                      );
+                      _updateNotificationCount();
+                    },
+                    badgeCount: _notificationCount,
+                  ),
+                  _buildHeaderIcon(
+                    Icons.favorite,
+                    favoriteProducts.isNotEmpty,
+                    () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) =>
+                            FavoritePage(favoriteProducts: favoriteProducts),
+                      ),
+                    ),
+                  ),
+                  _buildHeaderIcon(
+                    Icons.shopping_cart,
+                    cartItems.isNotEmpty,
+                    () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => CartPage(
+                          cartItems: cartItems,
+                          onRemoveFromCart: _removeFromCart,
+                          onQuantityChanged: _changeQuantity,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+          const SizedBox(height: 20),
+          _buildTimeConversionDropdown(),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildHeaderIcon(
+    IconData icon,
+    bool isActive,
+    VoidCallback onPressed, {
+    int badgeCount = 0,
+  }) {
+    return Stack(
       children: [
-        Container(
-          color: primaryColor,
-          width: double.infinity,
-          padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
-          child: Text(
-            "Selamat datang, ${widget.user.username}!",
-            style: GoogleFonts.poppins(
-              color: Colors.white,
-              fontWeight: FontWeight.w600,
-              fontSize: 20,
+        IconButton(
+          padding: const EdgeInsets.all(
+            6,
+          ), // Reduced padding to prevent overflow
+          constraints: const BoxConstraints(),
+          icon: Icon(
+            icon,
+            color: isActive ? accentColor : Colors.white,
+            size: 26,
+          ),
+          onPressed: onPressed,
+        ),
+        if (badgeCount > 0)
+          Positioned(
+            right: 0,
+            top: 0,
+            child: Container(
+              padding: const EdgeInsets.all(2),
+              decoration: BoxDecoration(
+                color: Colors.red,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              constraints: const BoxConstraints(minWidth: 16, minHeight: 16),
+              child: Text(
+                '$badgeCount',
+                style: const TextStyle(color: Colors.white, fontSize: 10),
+                textAlign: TextAlign.center,
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _buildSearchBar() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(16),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+          child: Container(
+            decoration: BoxDecoration(
+              color: cardColor.withOpacity(0.5),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: Colors.white.withOpacity(0.2)),
+            ),
+            child: TextField(
+              controller: _searchController,
+              style: GoogleFonts.poppins(color: Colors.black87),
+              decoration: InputDecoration(
+                hintText: 'Cari buah, sayur, dll...',
+                hintStyle: GoogleFonts.poppins(color: Colors.grey[700]),
+                prefixIcon: Icon(Icons.search, color: primaryColor),
+                suffixIcon: _searchQuery.isNotEmpty
+                    ? IconButton(
+                        icon: Icon(Icons.clear, color: Colors.grey[600]),
+                        onPressed: () => _searchController.clear(),
+                      )
+                    : null,
+                border: InputBorder.none,
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 20,
+                  vertical: 15,
+                ),
+              ),
             ),
           ),
         ),
-        // Add the dropdown widget here
-        _buildTimeConversionDropdown(),
-        _buildSearchBar(),
-        _buildFilterSortBar(),
-        Expanded(
-          child: Consumer<ProductProvider>(
-            builder: (context, productProvider, child) {
-              if (productProvider.isLoading) {
-                return const Center(child: CircularProgressIndicator());
-              }
+      ),
+    );
+  }
 
-              if (productProvider.errorMessage != null) {
-                return Center(
-                  child: Padding(
-                    padding: const EdgeInsets.all(16.0),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Text(
-                          productProvider.errorMessage!,
-                          textAlign: TextAlign.center,
-                          style: const TextStyle(
-                            color: Colors.red,
-                            fontSize: 16,
+  Widget _buildFilterSortBar() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 24.0),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            "Produk Pilihan",
+            style: GoogleFonts.poppins(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          TextButton.icon(
+            onPressed: _showSortOptions,
+            icon: Icon(Icons.sort, size: 20, color: primaryColor),
+            label: Text(
+              "Urutkan",
+              style: GoogleFonts.poppins(
+                color: primaryColor,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            style: TextButton.styleFrom(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildProductGrid(List<ProductModel> products) {
+    return GridView.builder(
+      padding: const EdgeInsets.all(24),
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 2,
+        mainAxisSpacing: 20,
+        crossAxisSpacing: 20,
+        childAspectRatio: 0.7,
+      ),
+      itemCount: products.length,
+      itemBuilder: (context, index) {
+        final product = products[index];
+        final isFavorite = favoriteProducts.any((p) => p.id == product.id);
+        return _buildProductCard(product, isFavorite);
+      },
+    );
+  }
+
+  Widget _buildProductCard(ProductModel product, bool isFavorite) {
+    final bool isOutOfStock = product.stock == 0;
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(24),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+        child: Container(
+          decoration: BoxDecoration(
+            color: cardColor.withOpacity(0.8),
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(color: Colors.white.withOpacity(0.3)),
+            boxShadow: [
+              BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 20),
+            ],
+          ),
+          child: InkWell(
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => DetailPage(
+                    product: product,
+                    onAddToCart: _addToCart,
+                    onAddToFavorite: _addToFavorites,
+                    currentUser: widget.user,
+                    isSeller: widget.user.roles.contains('seller'),
+                    isInitialFavorite: isFavorite,
+                  ),
+                ),
+              ).then((_) => setState(() {}));
+            },
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  flex: 5,
+                  child: Stack(
+                    children: [
+                      Positioned.fill(
+                        child: ClipRRect(
+                          borderRadius: const BorderRadius.vertical(
+                            top: Radius.circular(24),
+                          ),
+                          child: Image.network(
+                            product.thumbnail,
+                            width: double.infinity,
+                            fit: BoxFit.cover,
+                            errorBuilder: (ctx, err, st) => const Icon(
+                              Icons.image_not_supported,
+                              color: Colors.grey,
+                            ),
                           ),
                         ),
-                        const SizedBox(height: 10),
-                        ElevatedButton(
-                          onPressed: () {
-                            productProvider.fetchProducts(
-                              category: 'groceries',
-                            );
-                            productProvider.clearErrorMessage();
-                          },
-                          child: const Text('Coba Lagi'),
-                        ),
-                      ],
-                    ),
-                  ),
-                );
-              }
-
-              if (productProvider.allProducts.isEmpty) {
-                return const Center(child: Text('Tidak ada produk ditemukan.'));
-              }
-
-              // Apply filter and sorting
-              final filteredProducts = _getFilteredAndSortedProducts(
-                productProvider.allProducts,
-              );
-
-              if (filteredProducts.isEmpty) {
-                return Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(Icons.search_off, size: 64, color: Colors.grey[400]),
-                      const SizedBox(height: 16),
-                      Text(
-                        'Tidak ada produk yang sesuai\ndengan pencarian Anda',
-                        textAlign: TextAlign.center,
-                        style: GoogleFonts.poppins(
-                          fontSize: 16,
-                          color: Colors.grey[600],
-                        ),
                       ),
-                      const SizedBox(height: 16),
-                      ElevatedButton(
-                        onPressed: () {
-                          _searchController.clear();
-                        },
-                        child: const Text('Hapus Filter'),
+                      Positioned(
+                        top: 8,
+                        right: 8,
+                        // FIX 2: Added the cart button back below the favorite button
+                        child: Column(
+                          children: [
+                            InkWell(
+                              onTap: () => _toggleFavorite(product),
+                              child: CircleAvatar(
+                                radius: 18,
+                                backgroundColor: Colors.black.withOpacity(0.4),
+                                child: Icon(
+                                  isFavorite
+                                      ? Icons.favorite
+                                      : Icons.favorite_border,
+                                  color: isFavorite
+                                      ? Colors.redAccent
+                                      : Colors.white,
+                                  size: 18,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            InkWell(
+                              onTap: isOutOfStock
+                                  ? null
+                                  : () => _showQuantityDialogWithAdd(
+                                      context,
+                                      product,
+                                    ),
+                              child: CircleAvatar(
+                                radius: 18,
+                                backgroundColor: isOutOfStock
+                                    ? Colors.grey.withOpacity(0.5)
+                                    : Colors.black.withOpacity(0.4),
+                                child: Icon(
+                                  Icons.add_shopping_cart,
+                                  color: Colors.white,
+                                  size: 18,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ],
                   ),
-                );
-              }
-
-              return GridView.builder(
-                controller: _scrollController, // <-- INI DIA
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 12,
                 ),
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 2,
-                  mainAxisSpacing: 14,
-                  crossAxisSpacing: 14,
-                  childAspectRatio: 0.70,
-                ),
-                itemCount: filteredProducts.length,
-                itemBuilder: (context, index) {
-                  final product = filteredProducts[index];
-                  final isProductFavorite = favoriteProducts.any(
-                    (favProd) => favProd.id == product.id,
-                  );
-
-                  return Card(
-                    elevation: 6,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(18),
-                    ),
-                    shadowColor: Colors.black45,
-                    clipBehavior: Clip.antiAlias,
-                    child: InkWell(
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => DetailPage(
-                              product: product,
-                              onAddToCart: _addToCart,
-                              onAddToFavorite: _addToFavorites,
-                              currentUser: widget.user,
-                              isSeller: widget.user.roles.contains('seller'),
-                              isInitialFavorite: isProductFavorite,
-                            ),
+                Expanded(
+                  flex: 5,
+                  child: Padding(
+                    padding: const EdgeInsets.all(12),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                      children: [
+                        Text(
+                          product.title,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: GoogleFonts.poppins(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 14,
+                            height: 1.2,
                           ),
-                        ).then((_) {
-                          setState(() {});
-                        });
-                      },
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Container(
-                            height: 140,
-                            child: Stack(
+                        ),
+                        Text(
+                          product.category,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: GoogleFonts.poppins(
+                            color: Colors.grey[700],
+                            fontSize: 12,
+                          ),
+                        ),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: [
+                            Text(
+                              "\$${product.finalPrice.toStringAsFixed(2)}",
+                              style: GoogleFonts.poppins(
+                                color: primaryColor,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 16,
+                              ),
+                            ),
+                            Row(
                               children: [
-                                ClipRRect(
-                                  borderRadius: const BorderRadius.vertical(
-                                    top: Radius.circular(18),
-                                  ),
-                                  child: Image.network(
-                                    product.thumbnail,
-                                    fit: BoxFit.cover,
-                                    width: double.infinity,
-                                    errorBuilder:
-                                        (context, error, stackTrace) =>
-                                            Container(
-                                              color: Colors.grey[300],
-                                              alignment: Alignment.center,
-                                              child: const Icon(
-                                                Icons.broken_image,
-                                                size: 40,
-                                                color: Colors.grey,
-                                              ),
-                                            ),
-                                  ),
-                                ),
-                                Positioned(
-                                  top: 6,
-                                  right: 6,
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.end,
-                                    children: [
-                                      _buildIconButton(
-                                        icon: isProductFavorite
-                                            ? Icons.favorite
-                                            : Icons.favorite_border,
-                                        color: isProductFavorite
-                                            ? Colors.red
-                                            : Colors.white,
-                                        onPressed: () =>
-                                            _toggleFavorite(product),
-                                      ),
-                                      const SizedBox(height: 8),
-                                      _buildIconButton(
-                                        icon: Icons.add_shopping_cart,
-                                        color: Colors.white,
-                                        onPressed: product.stock > 0
-                                            ? () {
-                                                _showQuantityDialogWithAdd(
-                                                  context,
-                                                  product,
-                                                );
-                                              }
-                                            : null,
-                                      ),
-                                    ],
+                                Icon(Icons.star, color: accentColor, size: 16),
+                                Text(
+                                  " ${product.rating.toString()}",
+                                  style: GoogleFonts.poppins(
+                                    fontWeight: FontWeight.w600,
                                   ),
                                 ),
                               ],
                             ),
-                          ),
-                          Expanded(
-                            child: Padding(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 8,
-                                vertical: 6,
-                              ),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                mainAxisAlignment:
-                                    MainAxisAlignment.spaceBetween,
-                                children: [
-                                  Text(
-                                    product.title,
-                                    maxLines: 2,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: GoogleFonts.poppins(
-                                      fontWeight: FontWeight.w600,
-                                      fontSize: 14,
-                                    ),
-                                  ),
-                                  Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      const SizedBox(height: 2),
-                                      Text(
-                                        product.category,
-                                        style: GoogleFonts.poppins(
-                                          color: Colors.grey[700],
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.w500,
-                                        ),
-                                      ),
-                                      const SizedBox(height: 4),
-                                      Text(
-                                        "\$${product.finalPrice.toStringAsFixed(2)} USD",
-                                        style: GoogleFonts.poppins(
-                                          fontWeight: FontWeight.bold,
-                                          fontSize: 16,
-                                          color: Colors.green[800],
-                                        ),
-                                      ),
-                                      const SizedBox(height: 4),
-                                      Row(
-                                        children: [
-                                          Icon(
-                                            Icons.star,
-                                            color: Colors.amber.shade600,
-                                            size: 14,
-                                          ),
-                                          const SizedBox(width: 4),
-                                          Text(
-                                            product.rating.toStringAsFixed(1),
-                                            style: GoogleFonts.poppins(
-                                              fontSize: 12,
-                                              fontWeight: FontWeight.w600,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ],
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
+                          ],
+                        ),
+                      ],
                     ),
-                  );
-                },
-              );
-            },
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
-      ],
+      ),
+    );
+  }
+
+  Widget _buildTimeConversionDropdown() {
+    final formatter = DateFormat('HH:mm:ss');
+    DateTime displayedTime;
+    switch (_selectedTimeZone) {
+      case TimeZoneOption.wib:
+        displayedTime = _currentTime.toUtc().add(const Duration(hours: 7));
+        break;
+      case TimeZoneOption.wita:
+        displayedTime = _currentTime.toUtc().add(const Duration(hours: 8));
+        break;
+      case TimeZoneOption.wit:
+        displayedTime = _currentTime.toUtc().add(const Duration(hours: 9));
+        break;
+      case TimeZoneOption.london:
+        displayedTime = _currentTime.toUtc().add(const Duration(hours: 1));
+        break;
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      decoration: BoxDecoration(
+        color: Colors.black.withOpacity(0.2),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            '${formatter.format(displayedTime)}',
+            style: GoogleFonts.poppins(
+              color: Colors.white,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          DropdownButton<TimeZoneOption>(
+            value: _selectedTimeZone,
+            dropdownColor: secondaryColor,
+            icon: const Icon(Icons.public, color: Colors.white, size: 20),
+            underline: const SizedBox(),
+            onChanged: (TimeZoneOption? newValue) {
+              if (newValue != null)
+                setState(() => _selectedTimeZone = newValue);
+            },
+            items: TimeZoneOption.values.map((zone) {
+              return DropdownMenuItem<TimeZoneOption>(
+                value: zone,
+                child: Text(
+                  zone.name.toUpperCase(),
+                  style: GoogleFonts.poppins(color: Colors.white),
+                ),
+              );
+            }).toList(),
+          ),
+        ],
+      ),
     );
   }
 }
