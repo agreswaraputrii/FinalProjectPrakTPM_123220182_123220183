@@ -1,12 +1,12 @@
+// lib/models/product_model.dart
 import 'package:hive/hive.dart';
-import 'package:uuid/uuid.dart'; // Pastikan ini ada dan paket uuid sudah di pubspec.yaml
 
-part 'product_model.g.dart';
+part 'product_model.g.dart'; // File ini akan dibuat otomatis
 
-@HiveType(typeId: 6) // <-- PASTIKAN INI ADALAH 6, agar sesuai dengan main.dart
+@HiveType(typeId: 6) // Pastikan TypeId ini unik di seluruh aplikasi Anda
 class ProductModel extends HiveObject {
   @HiveField(0)
-  final String id; // Type changed from int to String
+  final String id;
   @HiveField(1)
   final String title;
   @HiveField(2)
@@ -43,116 +43,105 @@ class ProductModel extends HiveObject {
   final List<String> images;
   @HiveField(18)
   final String thumbnail;
-  @HiveField(19)
+
+  @HiveField(19) // Anotasi field baru
+  final String? uploaderUsername;
+
+  @HiveField(20) // Anotasi field baru
   int quantity;
-  @HiveField(20) // NEW HIVE FIELD INDEX!
-  final String? uploaderUsername; // NEW: To store who uploaded this product
 
   ProductModel({
     required this.id,
     required this.title,
-    required this.description,
+    this.description = '',
     required this.category,
     required this.price,
-    required this.discountPercentage,
-    required this.rating,
+    this.discountPercentage = 0.0,
+    this.rating = 0.0,
     required this.stock,
-    required this.tags,
-    required this.weight,
+    this.tags = const [],
+    this.weight = 0.0,
     required this.dimensions,
-    required this.warrantyInformation,
-    required this.shippingInformation,
-    required this.availabilityStatus,
-    required this.reviews,
-    required this.returnPolicy,
-    required this.minimumOrderQuantity,
-    required this.images,
+    this.warrantyInformation = '',
+    this.shippingInformation = '',
+    this.availabilityStatus = 'In Stock',
+    this.reviews = const [],
+    this.returnPolicy = 'No return policy',
+    this.minimumOrderQuantity = 1,
+    this.images = const [],
     required this.thumbnail,
+    this.uploaderUsername,
     this.quantity = 1,
-    this.uploaderUsername, // NEW: Make it nullable or provide a default if always present
   });
 
+  double get finalPrice => price * (1 - discountPercentage / 100);
+
   factory ProductModel.fromJsonSafe(Map<String, dynamic> json) {
-    final uuid = Uuid();
     return ProductModel(
-      // Ensure id is a String. If the API returns an int, convert it.
-      // If null, generate a new UUID for local products.
-      id: json['id'] != null ? json['id'].toString() : uuid.v4(),
-      title: json['title'] ?? '',
+      id: json['id']?.toString() ?? 'no-id',
+      title: json['title'] ?? 'No Title',
       description: json['description'] ?? '',
-      category: json['category'] ?? '',
+      category: json['category'] ?? 'Uncategorized',
       price: (json['price'] as num?)?.toDouble() ?? 0.0,
       discountPercentage:
           (json['discountPercentage'] as num?)?.toDouble() ?? 0.0,
       rating: (json['rating'] as num?)?.toDouble() ?? 0.0,
-      stock: json['stock'] ?? 0,
+      stock: (json['stock'] as num?)?.toInt() ?? 0,
       tags:
-          (json['tags'] as List<dynamic>?)?.map((e) => e.toString()).toList() ??
+          (json['tags'] as List<dynamic>?)
+              ?.map((tag) => tag.toString())
+              .toList() ??
           [],
       weight: (json['weight'] as num?)?.toDouble() ?? 0.0,
       dimensions: ProductDimensions.fromJsonSafe(json['dimensions'] ?? {}),
       warrantyInformation: json['warrantyInformation'] ?? '',
       shippingInformation: json['shippingInformation'] ?? '',
-      availabilityStatus: json['availabilityStatus'] ?? '',
+      availabilityStatus: json['availabilityStatus'] ?? 'In Stock',
       reviews:
           (json['reviews'] as List<dynamic>?)
-              ?.map((e) => ProductReview.fromJsonSafe(e))
+              ?.map((reviewJson) => ProductReview.fromJsonSafe(reviewJson))
               .toList() ??
           [],
-      returnPolicy: json['returnPolicy'] ?? '',
-      minimumOrderQuantity: json['minimumOrderQuantity'] as int? ?? 1,
+      returnPolicy: json['returnPolicy'] ?? 'No return policy',
+      minimumOrderQuantity:
+          (json['minimumOrderQuantity'] as num?)?.toInt() ?? 1,
       images:
           (json['images'] as List<dynamic>?)
-              ?.map((e) => e.toString())
+              ?.map((image) => image.toString())
               .toList() ??
           [],
       thumbnail: json['thumbnail'] ?? '',
-      quantity: json['quantity'] as int? ?? 1,
-      uploaderUsername:
-          json['uploaderUsername'] as String?, // NEW: Extract from JSON
+      uploaderUsername: json['uploaderUsername'],
     );
   }
 
-  Map<String, dynamic> toJson() => {
-    'id': id,
-    'title': title,
-    'description': description,
-    'category': category,
-    'price': price,
-    'discountPercentage': discountPercentage,
-    'rating': rating,
-    'stock': stock,
-    'tags': tags,
-    'weight': weight,
-    'dimensions': dimensions.toJson(),
-    'warrantyInformation': warrantyInformation,
-    'shippingInformation': shippingInformation,
-    'availabilityStatus': availabilityStatus,
-    'reviews': reviews.map((e) => e.toJson()).toList(),
-    'returnPolicy': returnPolicy,
-    'minimumOrderQuantity': minimumOrderQuantity,
-    'images': images,
-    'thumbnail': thumbnail,
-    'quantity': quantity,
-    'uploaderUsername': uploaderUsername, // NEW: Add to JSON
-  };
-
-  double get finalPrice => price - (price * discountPercentage / 100);
-  bool get isInStock => stock > 0;
-  bool get isLowStock => stock > 0 && stock <= 10;
-
-  @override
-  int get hashCode => id.hashCode;
-
-  @override
-  bool operator ==(Object other) =>
-      identical(this, other) ||
-      other is ProductModel &&
-          runtimeType == other.runtimeType &&
-          id == other.id;
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'title': title,
+      'description': description,
+      'category': category,
+      'price': price,
+      'discountPercentage': discountPercentage,
+      'rating': rating,
+      'stock': stock,
+      'tags': tags,
+      'weight': weight,
+      'dimensions': dimensions.toJson(),
+      'warrantyInformation': warrantyInformation,
+      'shippingInformation': shippingInformation,
+      'availabilityStatus': availabilityStatus,
+      'reviews': reviews.map((review) => review.toJson()).toList(),
+      'returnPolicy': returnPolicy,
+      'minimumOrderQuantity': minimumOrderQuantity,
+      'images': images,
+      'thumbnail': thumbnail,
+      'uploaderUsername': uploaderUsername,
+    };
+  }
 }
 
-@HiveType(typeId: 7)
+@HiveType(typeId: 7) // Pastikan TypeId unik
 class ProductDimensions extends HiveObject {
   @HiveField(0)
   final double width;
@@ -182,11 +171,10 @@ class ProductDimensions extends HiveObject {
   };
 
   @override
-  String toString() =>
-      '${width.toStringAsFixed(1)} x ${height.toStringAsFixed(1)} x ${depth.toStringAsFixed(1)} cm';
+  String toString() => '$width x $height x $depth cm';
 }
 
-@HiveType(typeId: 8)
+@HiveType(typeId: 8) // Pastikan TypeId unik
 class ProductReview extends HiveObject {
   @HiveField(0)
   final int rating;
@@ -209,10 +197,10 @@ class ProductReview extends HiveObject {
 
   factory ProductReview.fromJsonSafe(Map<String, dynamic> json) {
     return ProductReview(
-      rating: json['rating'] ?? 0,
+      rating: (json['rating'] as num?)?.toInt() ?? 0,
       comment: json['comment'] ?? '',
       date: json['date'] ?? '',
-      reviewerName: json['reviewerName'] ?? '',
+      reviewerName: json['reviewerName'] ?? 'Anonymous',
       reviewerEmail: json['reviewerEmail'] ?? '',
     );
   }

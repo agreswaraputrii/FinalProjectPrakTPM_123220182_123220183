@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import 'package:hive/hive.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:geocoding/geocoding.dart';
+import 'package:provider/provider.dart'; // <-- TAMBAHKAN INI
 
 import '../pages/cart_page.dart'; // Asumsi CartItem ada di sini
 import 'success_page.dart';
@@ -13,6 +14,7 @@ import '../models/notification_model.dart';
 import '../services/order_service.dart';
 import '../services/notification_service.dart';
 import '../services/auth_service.dart';
+import '../providers/order_provider.dart';
 
 class CheckoutPage extends StatefulWidget {
   final List<CartItem> cartItems;
@@ -37,7 +39,6 @@ class _CheckoutPageState extends State<CheckoutPage> {
   String? selectedPayment;
   String selectedCurrency = 'USD';
 
-  late OrderService _orderService;
   late NotificationService _notificationService;
   late UserModel? _currentUser; // Untuk menyimpan user yang sedang login
 
@@ -75,8 +76,9 @@ class _CheckoutPageState extends State<CheckoutPage> {
     final authService = AuthService(userBox);
     _currentUser = await authService.getLoggedInUser();
 
-    _orderService = OrderService(Hive.box<OrderModel>('orderBox'), userBox);
-    _notificationService = NotificationService(Hive.box<NotificationModel>('notificationBox'));
+    _notificationService = NotificationService(
+      Hive.box<NotificationModel>('notificationBox'),
+    );
 
     // Jika user punya nama dan alamat default, bisa diisi otomatis
     if (_currentUser != null) {
@@ -169,7 +171,8 @@ class _CheckoutPageState extends State<CheckoutPage> {
         showDialog(
           context: context,
           barrierDismissible: false,
-          builder: (context) => const Center(child: CircularProgressIndicator()),
+          builder: (context) =>
+              const Center(child: CircularProgressIndicator()),
         );
       }
 
@@ -283,6 +286,13 @@ class _CheckoutPageState extends State<CheckoutPage> {
       return;
     }
 
+    if (widget.cartItems.isEmpty) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Keranjang Anda kosong!')));
+      return;
+    }
+
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -290,26 +300,40 @@ class _CheckoutPageState extends State<CheckoutPage> {
     );
 
     try {
-      // 1. Buat OrderProductItem dari CartItem
+      // 1. Dapatkan sellerUsername dari produk yang dibeli.
+      // Asumsi sementara: semua produk dalam satu checkout berasal dari seller yang sama.
+      final String actualSellerUsername =
+          widget.cartItems.first.product.uploaderUsername ?? 'admin_store';
+
+      // Jika uploaderUsername null (misal dari produk API dummy), beri fallback
+      if (actualSellerUsername == 'unknown_seller') {
+        // Handle error, jangan lanjutkan checkout jika seller tidak diketahui
+        Navigator.of(context).pop(); // Tutup dialog loading
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Error: Penjual produk tidak ditemukan!'),
+          ),
+        );
+        return;
+      }
+
+      // 2. Buat OrderProductItem dari CartItem
       List<OrderProductItem> orderItems = widget.cartItems.map((cartItem) {
         return OrderProductItem(
-          productId: cartItem.product.id.toString(),
-          productName: cartItem.product.title, // **PERBAIKAN: Menggunakan .title**
-          productImageUrl: cartItem.product.thumbnail, // **PERBAIKAN: Menggunakan .thumbnail**
-          price: cartItem.product.price.toDouble(),
-          discountPercentage: cartItem.product.discountPercentage.toDouble(),
+          productId: cartItem.product.id,
+          productName: cartItem.product.title,
+          productImageUrl: cartItem.product.thumbnail,
+          price: cartItem.product.price,
+          discountPercentage: cartItem.product.discountPercentage,
           quantity: cartItem.quantity,
+          // PENTING: Tambahkan seller username di setiap item
+          // Ini akan berguna jika Anda ingin mendukung checkout dari banyak seller sekaligus
+          // sellerUsername: cartItem.product.uploaderUsername,
         );
       }).toList();
 
-      // Placeholder sellerUsername. Sesuaikan jika ProductModel Anda memiliki field seller.
-      // Jika semua produk di keranjang selalu dari 1 seller, Anda bisa set spesifik di sini.
-      // Atau, jika Anda punya daftar products dan tahu seller dari masing-masing product,
-      // Anda bisa membuat multiple orders, 1 order per seller.
-      String sellerUsernamePlaceholder = 'admin_seller_account'; // **PERBAIKAN: Placeholder yang lebih jelas**
-
-      // 2. Buat objek OrderModel baru
-      final newOrder = await _orderService.createOrder(
+      // 3. Buat objek OrderModel baru
+      final newOrder = OrderModel(
         customerUsername: _currentUser!.username,
         customerName: _nameController.text,
         customerAddress: _addressController.text,
@@ -321,31 +345,36 @@ class _CheckoutPageState extends State<CheckoutPage> {
         totalAmount: totalUSD,
         paymentMethod: selectedPayment!,
         selectedCurrency: selectedCurrency,
-        sellerUsername: sellerUsernamePlaceholder, // Menggunakan placeholder
+        sellerUsername:
+            actualSellerUsername, // <-- GUNAKAN USERNAME SELLER YANG BENAR
       );
 
-      // 3. Buat Notifikasi untuk Customer (pembayaran berhasil)
+      // 4. Panggil OrderProvider untuk menambah pesanan
+      // Ini akan menyimpan ke Hive DAN memberitahu UI
+      await Provider.of<OrderProvider>(
+        context,
+        listen: false,
+      ).addOrder(newOrder);
+
+      // 5. Buat Notifikasi (logika notifikasi Anda sudah bagus)
       await _notificationService.addNotification(
         targetUsername: _currentUser!.username,
         type: NotificationType.orderPaid,
         title: 'Pembayaran Berhasil!',
-        body: 'Pesanan Anda #${newOrder.orderId.substring(0, 8)} telah berhasil dibayar. Total: ${formattedTotal}.',
+        body:
+            'Pesanan Anda #${newOrder.orderId.substring(0, 8)} telah berhasil dibayar. Total: ${formattedTotal}.',
         referenceId: newOrder.orderId,
       );
 
-      // 4. Buat Notifikasi untuk Seller (pesanan baru masuk)
-      // Hanya kirim notifikasi ke seller jika sellerUsernamePlaceholder valid/bukan default dummy
-      if (sellerUsernamePlaceholder != 'admin_seller_account') { // Sesuaikan kondisi ini
-        await _notificationService.addNotification(
-          targetUsername: sellerUsernamePlaceholder,
-          type: NotificationType.newOrder,
-          title: 'Pesanan Baru Masuk!',
-          body: 'Ada pesanan baru dari ${_currentUser!.fullName}. ID Pesanan: #${newOrder.orderId.substring(0, 8)}.',
-          referenceId: newOrder.orderId,
-        );
-      }
-
-
+      await _notificationService.addNotification(
+        targetUsername:
+            actualSellerUsername, // Kirim notif ke seller yang benar
+        type: NotificationType.newOrder,
+        title: 'Pesanan Baru Masuk!',
+        body:
+            'Ada pesanan baru dari ${_currentUser!.fullName}. ID Pesanan: #${newOrder.orderId.substring(0, 8)}.',
+        referenceId: newOrder.orderId,
+      );
       // Tutup loading dialog
       if (mounted) {
         Navigator.of(context).pop();

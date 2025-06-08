@@ -109,6 +109,10 @@ class _DetailPageState extends State<DetailPage> {
       listen: false,
     );
 
+    final bool isOwner =
+        product.uploaderUsername != null &&
+        product.uploaderUsername == widget.currentUser.username;
+
     return Scaffold(
       appBar: AppBar(
         backgroundColor: primaryColor,
@@ -177,6 +181,32 @@ class _DetailPageState extends State<DetailPage> {
               ),
             ),
             const SizedBox(height: 8),
+            if (product.uploaderUsername != null &&
+                product.uploaderUsername!.isNotEmpty) ...[
+              Row(
+                children: [
+                  Icon(
+                    Icons.store_mall_directory_outlined,
+                    color: Colors.grey[700],
+                    size: 18,
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    'Dijual oleh: ',
+                    style: GoogleFonts.poppins(fontSize: 15, color: textColor),
+                  ),
+                  Text(
+                    '${product.uploaderUsername}',
+                    style: GoogleFonts.poppins(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                      color: accentColor, // Warna oranye agar menonjol
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+            ],
             // Kategori dan Rating
             Text(
               "Kategori: ${product.category}",
@@ -400,11 +430,12 @@ class _DetailPageState extends State<DetailPage> {
             const SizedBox(height: 24),
 
             // --- Tombol Edit/Delete (Hanya untuk Seller) ---
-            if (widget.isSeller) // Logika kondisional di sini
+            if (widget.isSeller && isOwner)
               Padding(
                 padding: const EdgeInsets.only(
                   bottom: 20.0,
-                ), // Beri sedikit jarak
+                  top: 20.0, // Tambahkan sedikit jarak atas
+                ),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                   children: [
@@ -418,21 +449,10 @@ class _DetailPageState extends State<DetailPage> {
                                   EditProductPage(product: product),
                             ),
                           ).then((updatedProduct) {
-                            // Capture the result
-                            // This `then` block will run when EditProductPage is popped
                             if (updatedProduct != null &&
                                 updatedProduct is ProductModel) {
-                              // If an updated product is returned, rebuild the UI
                               setState(() {
-                                // Although the ProductProvider is already updated,
-                                // we might want to refresh the local product state if DetailPage holds it.
-                                // However, since we're using widget.product directly,
-                                // we'd need to fetch the updated product from the provider
-                                // or assume that the ProductProvider's notifyListeners()
-                                // will cause a rebuild if DetailPage was a Consumer.
-                                // For simplicity, let's just make sure the display is consistent.
-                                // A simpler approach if only local list is modified:
-                                // if (productProvider.allProducts.contains(updatedProduct)) { ... }
+                                // Rebuild UI jika perlu
                               });
                             }
                           });

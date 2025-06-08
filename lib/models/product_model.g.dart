@@ -36,8 +36,8 @@ class ProductModelAdapter extends TypeAdapter<ProductModel> {
       minimumOrderQuantity: fields[16] as int,
       images: (fields[17] as List).cast<String>(),
       thumbnail: fields[18] as String,
-      quantity: fields[19] as int,
-      uploaderUsername: fields[20] as String?,
+      uploaderUsername: fields[19] as String?,
+      quantity: fields[20] as int,
     );
   }
 
@@ -84,9 +84,9 @@ class ProductModelAdapter extends TypeAdapter<ProductModel> {
       ..writeByte(18)
       ..write(obj.thumbnail)
       ..writeByte(19)
-      ..write(obj.quantity)
+      ..write(obj.uploaderUsername)
       ..writeByte(20)
-      ..write(obj.uploaderUsername);
+      ..write(obj.quantity);
   }
 
   @override
