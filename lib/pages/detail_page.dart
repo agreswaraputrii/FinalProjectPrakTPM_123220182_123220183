@@ -45,19 +45,43 @@ class _DetailPageState extends State<DetailPage> {
         : 1;
   }
 
+  void _showSnackBar(String message, Color backgroundColor, {IconData? icon}) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            if (icon != null) ...[
+              Icon(icon, color: Colors.white),
+              const SizedBox(width: 8),
+            ],
+            Expanded(
+              child: Text(
+                message,
+                style: GoogleFonts.poppins(color: Colors.white),
+              ),
+            ),
+          ],
+        ),
+        backgroundColor: backgroundColor,
+        behavior: SnackBarBehavior.floating,
+        margin: const EdgeInsets.all(16),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        duration: const Duration(seconds: 2),
+      ),
+    );
+  }
+
   void toggleFavorite() {
     setState(() {
       isFavorite = !isFavorite;
     });
     widget.onAddToFavorite(widget.product, isFavorite);
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          isFavorite
-              ? 'Produk ditambahkan ke favorit'
-              : 'Produk dihapus dari favorit',
-        ),
-      ),
+    _showSnackBar(
+      isFavorite
+          ? 'Produk ditambahkan ke favorit'
+          : 'Produk dihapus dari favorit',
+      isFavorite ? Colors.pink.shade400 : Colors.blueGrey,
+      icon: isFavorite ? Icons.favorite : Icons.favorite_border,
     );
   }
 
@@ -72,10 +96,10 @@ class _DetailPageState extends State<DetailPage> {
         quantity = newQuantity;
       });
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Tidak bisa menambah, stok tidak mencukupi!'),
-        ),
+      _showSnackBar(
+        'Tidak bisa menambah, stok tidak mencukupi!',
+        Colors.redAccent,
+        icon: Icons.error_outline,
       );
     }
   }
@@ -91,10 +115,10 @@ class _DetailPageState extends State<DetailPage> {
         quantity = newQuantity;
       });
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Jumlah tidak bisa kurang dari minimum order ($moq)'),
-        ),
+      _showSnackBar(
+        'Jumlah tidak bisa kurang dari minimum order ($moq ${widget.product.unit})',
+        Colors.orange.shade700,
+        icon: Icons.warning_amber_rounded,
       );
     }
   }
@@ -111,7 +135,7 @@ class _DetailPageState extends State<DetailPage> {
               widget.product, // Fallback ke produk awal jika belum ditemukan
         );
         final isOwner = product.uploaderUsername == widget.currentUser.username;
-        final Color primaryColor = const Color(0xFF4E342E);
+        final Color primaryColor = const Color(0xFF2E7D32);
 
         return Scaffold(
           appBar: AppBar(
@@ -201,7 +225,7 @@ class _DetailPageState extends State<DetailPage> {
           style: GoogleFonts.poppins(
             fontSize: 24,
             fontWeight: FontWeight.bold,
-            color: const Color(0xFF4E342E),
+            color: const Color(0xFF2E7D32),
           ),
         ),
         const SizedBox(height: 8),
@@ -313,8 +337,15 @@ class _DetailPageState extends State<DetailPage> {
                     .map(
                       (tag) => Chip(
                         label: Text(tag, style: GoogleFonts.poppins()),
-                        backgroundColor: Colors.green[100],
-                        side: BorderSide(color: Colors.green.shade200),
+                        backgroundColor: const Color.fromARGB(
+                          255,
+                          216,
+                          232,
+                          71,
+                        ),
+                        side: const BorderSide(
+                          color: Color.fromARGB(255, 185, 199, 28),
+                        ),
                       ),
                     )
                     .toList(),
@@ -448,12 +479,19 @@ class _DetailPageState extends State<DetailPage> {
               child: OutlinedButton(
                 onPressed: () {
                   if (quantity > product.stock) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Jumlah melebihi stok')),
+                    _showSnackBar(
+                      'Jumlah melebihi stok yang tersedia',
+                      Colors.redAccent,
+                      icon: Icons.error_outline,
                     );
                     return;
                   }
                   widget.onAddToCart(product, quantity);
+                  _showSnackBar(
+                    '${quantity} ${product.unit} ${product.title} ditambahkan ke keranjang!',
+                    Colors.green.shade600,
+                    icon: Icons.check_circle_outline,
+                  );
                 },
                 style: OutlinedButton.styleFrom(
                   side: BorderSide(color: accentColor, width: 2),
@@ -488,8 +526,10 @@ class _DetailPageState extends State<DetailPage> {
                 ),
                 onPressed: () {
                   if (quantity > product.stock) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Jumlah melebihi stok')),
+                    _showSnackBar(
+                      'Jumlah melebihi stok yang tersedia',
+                      Colors.redAccent,
+                      icon: Icons.error_outline,
                     );
                     return;
                   }
@@ -551,10 +591,22 @@ class _DetailPageState extends State<DetailPage> {
                   builder: (context) => EditProductPage(product: product),
                 ),
               ),
-              icon: const Icon(Icons.edit),
-              label: const Text('Edit Produk'),
+              icon: const Icon(Icons.edit_note_rounded, size: 24), // New icon
+              label: Text(
+                'Edit Produk',
+                style: GoogleFonts.poppins(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
               style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.blue.shade700, // Blue for edit
+                foregroundColor: Colors.white, // White text
                 padding: const EdgeInsets.symmetric(vertical: 12),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12), // Rounded corners
+                ),
+                elevation: 3, // Add subtle shadow
               ),
             ),
           ),
@@ -565,20 +617,64 @@ class _DetailPageState extends State<DetailPage> {
                 bool? confirmDelete = await showDialog<bool>(
                   context: context,
                   builder: (context) => AlertDialog(
-                    title: const Text('Hapus Produk?'),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(
+                        15,
+                      ), // Rounded corners
+                    ),
+                    title: Text(
+                      'Hapus Produk?',
+                      style: GoogleFonts.poppins(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 20,
+                      ),
+                    ),
                     content: Text(
-                      'Anda yakin ingin menghapus "${product.title}"?',
+                      'Anda yakin ingin menghapus "${product.title}"? Aksi ini tidak bisa dibatalkan.',
+                      style: GoogleFonts.poppins(fontSize: 15),
+                    ),
+                    actionsPadding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 10,
                     ),
                     actions: [
                       TextButton(
                         onPressed: () => Navigator.pop(context, false),
-                        child: const Text('Batal'),
+                        style: TextButton.styleFrom(
+                          foregroundColor: Colors.grey[700], // Muted color
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 10,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
+                        child: Text(
+                          'Batal',
+                          style: GoogleFonts.poppins(
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
                       ),
-                      TextButton(
+                      ElevatedButton(
                         onPressed: () => Navigator.pop(context, true),
-                        child: const Text(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.red.shade700, // Stronger red
+                          foregroundColor: Colors.white, // White text
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 10,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
+                        child: Text(
                           'Hapus',
-                          style: TextStyle(color: Colors.red),
+                          style: GoogleFonts.poppins(
+                            fontWeight: FontWeight.w600,
+                          ),
                         ),
                       ),
                     ],
@@ -589,16 +685,40 @@ class _DetailPageState extends State<DetailPage> {
                     product.id,
                   );
                   if (success && mounted) {
-                    Navigator.pop(context);
+                    _showSnackBar(
+                      'Produk "${product.title}" berhasil dihapus!',
+                      Colors.green.shade600,
+                      icon: Icons.check_circle_outline,
+                    );
+                    Navigator.pop(context); // Go back after successful deletion
+                  } else if (!success && mounted) {
+                    _showSnackBar(
+                      'Gagal menghapus produk "${product.title}". Silakan coba lagi.',
+                      Colors.redAccent,
+                      icon: Icons.error_outline,
+                    );
                   }
                 }
               },
-              icon: const Icon(Icons.delete_forever),
-              label: const Text('Hapus'),
+              icon: const Icon(
+                Icons.delete_sweep_rounded,
+                size: 24,
+              ), // New icon
+              label: Text(
+                'Hapus',
+                style: GoogleFonts.poppins(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
               style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.red.shade700,
+                backgroundColor: Colors.red.shade600, // Slightly brighter red
                 foregroundColor: Colors.white,
                 padding: const EdgeInsets.symmetric(vertical: 12),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12), // Rounded corners
+                ),
+                elevation: 3, // Add subtle shadow
               ),
             ),
           ),

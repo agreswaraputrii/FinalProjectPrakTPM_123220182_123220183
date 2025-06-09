@@ -38,7 +38,9 @@ class _SubmitReviewPageState extends State<SubmitReviewPage> {
 
   @override
   void dispose() {
-    _commentControllers.values.forEach((controller) => controller.dispose());
+    for (var controller in _commentControllers.values) {
+      controller.dispose();
+    }
     super.dispose();
   }
 
@@ -76,6 +78,7 @@ class _SubmitReviewPageState extends State<SubmitReviewPage> {
         const SnackBar(
           content: Text('Terima kasih atas ulasan Anda!'),
           backgroundColor: Colors.green,
+          behavior: SnackBarBehavior.floating, // Make it floating
         ),
       );
       Navigator.pop(context);
@@ -84,6 +87,7 @@ class _SubmitReviewPageState extends State<SubmitReviewPage> {
         const SnackBar(
           content: Text('Mohon isi semua rating dan ulasan produk.'),
           backgroundColor: Colors.red,
+          behavior: SnackBarBehavior.floating, // Make it floating
         ),
       );
     }
@@ -93,19 +97,44 @@ class _SubmitReviewPageState extends State<SubmitReviewPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Ulas Pesanan #${widget.order.orderId.substring(0, 8)}'),
+        title: Text(
+          'Ulas Pesanan #${widget.order.orderId.substring(0, 8)}',
+          style: GoogleFonts.poppins(
+            fontWeight: FontWeight.w600, // Make app bar title bolder
+          ),
+        ),
+        backgroundColor: Colors.white, // White app bar for a cleaner look
+        elevation: 0.5, // Subtle shadow for app bar
+        foregroundColor: Colors.black87, // Darker text for app bar
       ),
       body: ListView(
         padding: const EdgeInsets.all(16.0),
         children: [
-          ...widget.order.items.map((item) => _buildReviewForm(item)).toList(),
+          Text(
+            'Bagikan pengalaman Anda dengan produk di pesanan ini.',
+            style: GoogleFonts.poppins(fontSize: 14, color: Colors.grey[700]),
+          ),
+          const SizedBox(height: 20),
+          ...widget.order.items.map((item) => _buildReviewForm(item)),
           const SizedBox(height: 24),
           ElevatedButton(
             onPressed: _submitAllReviews,
             style: ElevatedButton.styleFrom(
               padding: const EdgeInsets.symmetric(vertical: 16),
+              backgroundColor: Colors.deepPurple, // A more vibrant button color
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12), // Rounded corners
+              ),
+              elevation: 3, // Subtle shadow for the button
             ),
-            child: const Text('Kirim Semua Ulasan'),
+            child: Text(
+              'Kirim Ulasan',
+              style: GoogleFonts.poppins(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: Colors.white,
+              ),
+            ),
           ),
         ],
       ),
@@ -115,20 +144,46 @@ class _SubmitReviewPageState extends State<SubmitReviewPage> {
   Widget _buildReviewForm(OrderProductItem item) {
     return Card(
       margin: const EdgeInsets.only(bottom: 16),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(15), // Softer card edges
+      ),
+      elevation: 2, // A bit more elevation for the card
       child: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start, // Align text to start
           children: [
             ListTile(
-              leading: Image.network(item.productImageUrl, width: 50),
+              leading: ClipRRect(
+                borderRadius: BorderRadius.circular(8), // Rounded image corners
+                child: Image.network(
+                  item.productImageUrl,
+                  width: 60, // Slightly larger image
+                  height: 60,
+                  fit: BoxFit.cover,
+                ),
+              ),
               title: Text(
                 item.productName,
-                style: GoogleFonts.poppins(fontWeight: FontWeight.bold),
+                style: GoogleFonts.poppins(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 17, // Slightly larger product name
+                ),
+              ),
+              subtitle: Text(
+                'Jumlah: ${item.quantity}', // Show quantity
+                style: GoogleFonts.poppins(color: Colors.grey[600]),
               ),
               contentPadding: EdgeInsets.zero,
             ),
-            const Divider(),
-            Text('Bagaimana rating Anda?', style: GoogleFonts.poppins()),
+            const Divider(height: 20, thickness: 1), // Thicker divider
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 8.0),
+              child: Text(
+                'Bagaimana rating Anda untuk produk ini?', // More specific question
+                style: GoogleFonts.poppins(fontSize: 15, color: Colors.black87),
+              ),
+            ),
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: List.generate(
@@ -136,24 +191,43 @@ class _SubmitReviewPageState extends State<SubmitReviewPage> {
                 (index) => IconButton(
                   icon: Icon(
                     index < _ratings[item.productId]!
-                        ? Icons.star
-                        : Icons.star_border,
+                        ? Icons
+                              .star_rounded // Use rounded stars
+                        : Icons.star_border_rounded,
                     color: Colors.amber,
-                    size: 32,
+                    size: 38, // Larger stars
                   ),
                   onPressed: () =>
                       setState(() => _ratings[item.productId] = index + 1),
+                  splashRadius: 28, // Adjust splash radius for stars
                 ),
               ),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 16), // Increased spacing
             TextField(
               controller: _commentControllers[item.productId],
-              decoration: const InputDecoration(
-                border: OutlineInputBorder(),
-                labelText: 'Tulis pengalaman Anda...',
+              decoration: InputDecoration(
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10), // Rounded text field
+                  borderSide: const BorderSide(color: Colors.grey),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10),
+                  borderSide: const BorderSide(
+                    color: Colors.deepPurple,
+                    width: 2,
+                  ), // Highlight on focus
+                ),
+                labelText:
+                    'Tulis ulasan Anda di sini...', // More inviting label
+                labelStyle: GoogleFonts.poppins(color: Colors.grey[700]),
+                hintStyle: GoogleFonts.poppins(color: Colors.grey[500]),
+                alignLabelWithHint: true, // Align label to top for multiline
               ),
-              maxLines: 3,
+              maxLines: 4, // Allow more lines for comment
+              keyboardType: TextInputType.multiline,
+              textCapitalization: TextCapitalization
+                  .sentences, // Capitalize first letter of sentences
             ),
           ],
         ),

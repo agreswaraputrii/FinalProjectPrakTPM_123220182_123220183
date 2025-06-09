@@ -143,12 +143,15 @@ class _HomePageState extends State<HomePage> {
           _isTiltScrollEnabled
               ? 'Fitur "Miringkan untuk Gulir" Aktif'
               : 'Fitur "Miringkan untuk Gulir" Nonaktif',
-          style: GoogleFonts.poppins(),
+          style: GoogleFonts.poppins(color: Colors.white), // Beautified
         ),
         backgroundColor: _isTiltScrollEnabled ? primaryColor : Colors.redAccent,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        behavior: SnackBarBehavior.floating,
-        margin: const EdgeInsets.all(16),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+        ), // Beautified
+        behavior: SnackBarBehavior.floating, // Beautified
+        margin: const EdgeInsets.all(16), // Beautified
+        duration: const Duration(seconds: 2), // Added duration
       ),
     );
   }
@@ -233,12 +236,36 @@ class _HomePageState extends State<HomePage> {
       if (favoriteProducts.any((p) => p.id == product.id)) {
         favoriteProducts.removeWhere((p) => p.id == product.id);
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('${product.title} dihapus dari favorit')),
+          SnackBar(
+            content: Text(
+              '${product.title} dihapus dari favorit',
+              style: GoogleFonts.poppins(color: Colors.white), // Beautified
+            ),
+            backgroundColor: Colors.blueGrey, // Beautified (removed color)
+            behavior: SnackBarBehavior.floating, // Beautified
+            margin: const EdgeInsets.all(16), // Beautified
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ), // Beautified
+            duration: const Duration(seconds: 2), // Added duration
+          ),
         );
       } else {
         favoriteProducts.add(product);
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('${product.title} ditambahkan ke favorit')),
+          SnackBar(
+            content: Text(
+              '${product.title} ditambahkan ke favorit',
+              style: GoogleFonts.poppins(color: Colors.white), // Beautified
+            ),
+            backgroundColor: Colors.pink.shade400, // Beautified (added color)
+            behavior: SnackBarBehavior.floating, // Beautified
+            margin: const EdgeInsets.all(16), // Beautified
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ), // Beautified
+            duration: const Duration(seconds: 2), // Added duration
+          ),
         );
       }
     });
@@ -247,8 +274,9 @@ class _HomePageState extends State<HomePage> {
   void _addToFavorites(ProductModel product, bool isFavorite) {
     setState(() {
       if (isFavorite) {
-        if (!favoriteProducts.any((p) => p.id == product.id))
+        if (!favoriteProducts.any((p) => p.id == product.id)) {
           favoriteProducts.add(product);
+        }
       } else {
         favoriteProducts.removeWhere((p) => p.id == product.id);
       }
@@ -269,7 +297,15 @@ class _HomePageState extends State<HomePage> {
         SnackBar(
           content: Text(
             '${product.title} ($quantity) ditambahkan ke keranjang',
+            style: GoogleFonts.poppins(color: Colors.white), // Beautified
           ),
+          backgroundColor: Colors.green.shade600, // Beautified
+          behavior: SnackBarBehavior.floating, // Beautified
+          margin: const EdgeInsets.all(16), // Beautified
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ), // Beautified
+          duration: const Duration(seconds: 2), // Added duration
         ),
       );
     });
@@ -460,11 +496,12 @@ class _HomePageState extends State<HomePage> {
                         errorMessage =
                             'Jumlah melebihi stok yang tersedia (${product.stock}).';
                       }
+                      // Beautified SnackBar for error messages in dialog
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
                           content: Text(
                             errorMessage,
-                            style: GoogleFonts.poppins(),
+                            style: GoogleFonts.poppins(color: Colors.white),
                           ),
                           backgroundColor: Colors.red.shade600,
                           shape: RoundedRectangleBorder(
@@ -472,6 +509,7 @@ class _HomePageState extends State<HomePage> {
                           ),
                           behavior: SnackBarBehavior.floating,
                           margin: const EdgeInsets.all(16),
+                          duration: const Duration(seconds: 3),
                         ),
                       );
                     }
@@ -568,7 +606,7 @@ class _HomePageState extends State<HomePage> {
                         Navigator.pop(context);
                       },
                     );
-                  }).toList(),
+                  }),
                 ],
               ),
             ),
@@ -800,7 +838,7 @@ class _HomePageState extends State<HomePage> {
                       maxLines: 1,
                       style: GoogleFonts.poppins(
                         color: Colors.white,
-                        fontSize: 22,
+                        fontSize: 20,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
@@ -924,7 +962,7 @@ class _HomePageState extends State<HomePage> {
               controller: _searchController,
               style: GoogleFonts.poppins(color: Colors.black87),
               decoration: InputDecoration(
-                hintText: 'Cari buah, sayur, dll...',
+                hintText: 'Cari produk',
                 hintStyle: GoogleFonts.poppins(color: Colors.grey[700]),
                 prefixIcon: Icon(Icons.search, color: primaryColor),
                 suffixIcon: _searchQuery.isNotEmpty
@@ -1093,7 +1131,7 @@ class _HomePageState extends State<HomePage> {
                               backgroundColor: isOutOfStock
                                   ? Colors.grey.withOpacity(0.5)
                                   : Colors.black.withOpacity(0.4),
-                              child: Icon(
+                              child: const Icon(
                                 Icons.add_shopping_cart,
                                 color: Colors.white,
                                 size: 18,
@@ -1197,7 +1235,7 @@ class _HomePageState extends State<HomePage> {
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Text(
-            '${formatter.format(displayedTime)}',
+            formatter.format(displayedTime),
             style: GoogleFonts.poppins(
               color: Colors.white,
               fontWeight: FontWeight.w500,
@@ -1209,8 +1247,9 @@ class _HomePageState extends State<HomePage> {
             icon: const Icon(Icons.public, color: Colors.white, size: 20),
             underline: const SizedBox(),
             onChanged: (TimeZoneOption? newValue) {
-              if (newValue != null)
+              if (newValue != null) {
                 setState(() => _selectedTimeZone = newValue);
+              }
             },
             items: TimeZoneOption.values.map((zone) {
               return DropdownMenuItem<TimeZoneOption>(

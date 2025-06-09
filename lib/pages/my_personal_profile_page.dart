@@ -50,7 +50,7 @@ class MyPersonalProfilePage extends StatelessWidget {
               Text(
                 "Agreswara Putri Wijaya",
                 style: GoogleFonts.poppins(
-                  fontSize: 26,
+                  fontSize: 20,
                   fontWeight: FontWeight.bold,
                   color: primaryColor,
                 ),
@@ -59,7 +59,7 @@ class MyPersonalProfilePage extends StatelessWidget {
               Text(
                 '123220182',
                 style: GoogleFonts.poppins(
-                  fontSize: 18,
+                  fontSize: 16,
                   color: Colors.grey[600],
                 ),
                 textAlign: TextAlign.center,
@@ -136,7 +136,7 @@ class MyPersonalProfilePage extends StatelessWidget {
           Text(
             label,
             style: GoogleFonts.poppins(
-              fontSize: 16,
+              fontSize: 14,
               fontWeight: FontWeight.w500,
               color: primaryColor,
             ),
@@ -145,7 +145,7 @@ class MyPersonalProfilePage extends StatelessWidget {
           Expanded(
             child: Text(
               value,
-              style: GoogleFonts.poppins(fontSize: 16, color: Colors.grey[800]),
+              style: GoogleFonts.poppins(fontSize: 10, color: Colors.grey[800]),
               overflow: TextOverflow.ellipsis,
             ),
           ),

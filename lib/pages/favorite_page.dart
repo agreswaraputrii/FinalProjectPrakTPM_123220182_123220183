@@ -27,7 +27,7 @@ class _FavoritePageState extends State<FavoritePage> {
 
   @override
   Widget build(BuildContext context) {
-    final Color primaryColor = const Color(0xFF4E342E);
+    final Color primaryColor = const Color(0xFF2E7D32);
 
     return Scaffold(
       appBar: AppBar(

@@ -5,7 +5,6 @@ import '../models/user_model.dart';
 import '../providers/product_provider.dart';
 import '../providers/order_provider.dart'; // <-- IMPORT ORDER PROVIDER
 import '../pages/detail_page.dart';
-import '../models/product_model.dart';
 import '../pages/manage_orders_page.dart';
 import '../pages/my_orders_page.dart';
 

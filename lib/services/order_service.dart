@@ -55,10 +55,10 @@ class OrderService {
       order.status = newStatus;
       await order.save();
       print(
-        'OrderService: Order ${orderId} status updated to ${newStatus.name}',
+        'OrderService: Order $orderId status updated to ${newStatus.name}',
       );
     } else {
-      print('OrderService: Order with ID ${orderId} not found for update.');
+      print('OrderService: Order with ID $orderId not found for update.');
     }
   }
 
@@ -74,14 +74,14 @@ class OrderService {
       print('No orders found.');
       return;
     }
-    _orderBox.values.forEach((order) {
+    for (var order in _orderBox.values) {
       print(
         'Order ID: ${order.orderId.substring(0, 8)}..., Customer: ${order.customerUsername}, Seller: ${order.sellerUsername}, Status: ${order.status.name}, Total: ${order.totalAmount}',
       );
       for (var item in order.items) {
         print('  - Product: ${item.productName}, Qty: ${item.quantity}');
       }
-    });
+    }
     print('--------------------------');
   }
 

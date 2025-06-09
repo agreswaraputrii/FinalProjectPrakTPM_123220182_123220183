@@ -212,7 +212,12 @@ class _CheckoutPageState extends State<CheckoutPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Lengkapi semua data dan pastikan Anda login!'),
-          backgroundColor: Colors.red,
+          backgroundColor: Colors.redAccent,
+          behavior: SnackBarBehavior.floating,
+          margin: EdgeInsets.all(16),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.all(Radius.circular(12)),
+          ),
         ),
       );
       return;
@@ -296,7 +301,12 @@ class _CheckoutPageState extends State<CheckoutPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Terjadi kesalahan saat checkout: ${e.toString()}'),
-          backgroundColor: Colors.red,
+          backgroundColor: Colors.redAccent,
+          behavior: SnackBarBehavior.floating,
+          margin: const EdgeInsets.all(16),
+          shape: const RoundedRectangleBorder(
+            borderRadius: BorderRadius.all(Radius.circular(12)),
+          ),
         ),
       );
     }
@@ -304,47 +314,88 @@ class _CheckoutPageState extends State<CheckoutPage> {
 
   @override
   Widget build(BuildContext context) {
-    final themeColor = const Color(0xFF4E342E);
+    final themeColor = const Color(0xFF2E7D32); // Your existing theme color
 
     return Scaffold(
       appBar: AppBar(
         backgroundColor: themeColor,
         foregroundColor: Colors.white,
-        title: Text('Checkout', style: GoogleFonts.poppins()),
+        title: Text(
+          'Checkout',
+          style: GoogleFonts.poppins(fontWeight: FontWeight.w600),
+        ),
       ),
       body: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(20), // Increased overall padding
         child: Form(
           key: _formKey,
           child: ListView(
             children: [
+              Text(
+                'Informasi Pengiriman',
+                style: GoogleFonts.poppins(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: themeColor,
+                ),
+              ),
+              const SizedBox(height: 16),
               TextFormField(
                 controller: _nameController,
-                decoration: const InputDecoration(
+                decoration: InputDecoration(
                   labelText: 'Nama Penerima',
-                  border: OutlineInputBorder(),
+                  hintText: 'Masukkan nama lengkap penerima',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  prefixIcon: const Icon(
+                    Icons.person_outline,
+                  ), // Changed icon slightly
+                  filled: true,
+                  fillColor: Colors.grey[50],
+                  contentPadding: const EdgeInsets.symmetric(
+                    vertical: 16,
+                    horizontal: 12,
+                  ), // Added padding
                 ),
-                validator: (val) => val!.isEmpty ? 'Wajib diisi' : null,
+                validator: (val) => val!.isEmpty ? 'Nama wajib diisi' : null,
               ),
               const SizedBox(height: 16),
               TextFormField(
                 controller: _addressController,
-                decoration: const InputDecoration(
+                decoration: InputDecoration(
                   labelText: 'Alamat Lengkap',
-                  border: OutlineInputBorder(),
+                  hintText:
+                      'Contoh: Jl. Merdeka No. 123, Kel. XYZ, Kec. ABC, Kota Surakarta',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  prefixIcon: const Icon(
+                    Icons.location_on_outlined,
+                  ), // Changed icon slightly
+                  filled: true,
+                  fillColor: Colors.grey[50],
+                  contentPadding: const EdgeInsets.symmetric(
+                    vertical: 16,
+                    horizontal: 12,
+                  ),
                 ),
-                validator: (val) => val!.isEmpty ? 'Wajib diisi' : null,
+                validator: (val) => val!.isEmpty ? 'Alamat wajib diisi' : null,
                 maxLines: 3,
               ),
               Align(
                 alignment: Alignment.centerLeft,
                 child: TextButton.icon(
                   onPressed: _getCurrentLocationAndFillAddress,
-                  icon: const Icon(Icons.my_location),
-                  label: const Text('Gunakan Lokasi Saya'),
+                  icon: Icon(Icons.my_location, color: themeColor),
+                  label: Text(
+                    'Gunakan Lokasi Saya',
+                    style: GoogleFonts.poppins(fontSize: 15, color: themeColor),
+                  ),
+                  style: TextButton.styleFrom(foregroundColor: themeColor),
                 ),
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 16),
               _isFreeShipping
                   ? TextFormField(
                       controller: _courierController,
@@ -358,7 +409,11 @@ class _CheckoutPageState extends State<CheckoutPage> {
                         filled: true,
                         fillColor: Colors.green[50],
                         border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(8),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        contentPadding: const EdgeInsets.symmetric(
+                          vertical: 16,
+                          horizontal: 12,
                         ),
                       ),
                     )
@@ -370,7 +425,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
                             (courier) => DropdownMenuItem(
                               value: courier,
                               child: Text(
-                                '$courier (+\$${courierPrices[courier]})',
+                                '$courier (+\$${courierPrices[courier]?.toStringAsFixed(2)})',
                               ),
                             ),
                           )
@@ -378,11 +433,29 @@ class _CheckoutPageState extends State<CheckoutPage> {
                       onChanged: (val) => setState(() => selectedCourier = val),
                       validator: (val) =>
                           val == null ? 'Pilih jasa kirim' : null,
-                      decoration: const InputDecoration(
-                        border: OutlineInputBorder(),
+                      decoration: InputDecoration(
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
                         labelText: 'Jasa Kirim',
+                        prefixIcon: const Icon(Icons.delivery_dining),
+                        filled: true,
+                        fillColor: Colors.grey[50],
+                        contentPadding: const EdgeInsets.symmetric(
+                          vertical: 16,
+                          horizontal: 12,
+                        ),
                       ),
                     ),
+              const SizedBox(height: 24), // More space before next section
+              Text(
+                'Metode Pembayaran',
+                style: GoogleFonts.poppins(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: themeColor,
+                ),
+              ),
               const SizedBox(height: 16),
               DropdownButtonFormField<String>(
                 value: selectedPayment,
@@ -396,17 +469,35 @@ class _CheckoutPageState extends State<CheckoutPage> {
                 onChanged: (val) => setState(() => selectedPayment = val),
                 validator: (val) =>
                     val == null ? 'Pilih metode pembayaran' : null,
-                decoration: const InputDecoration(
-                  border: OutlineInputBorder(),
+                decoration: InputDecoration(
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
                   labelText: 'Metode Pembayaran',
+                  prefixIcon: const Icon(Icons.payment),
+                  filled: true,
+                  fillColor: Colors.grey[50],
+                  contentPadding: const EdgeInsets.symmetric(
+                    vertical: 16,
+                    horizontal: 12,
+                  ),
                 ),
               ),
               const SizedBox(height: 16),
               DropdownButtonFormField<String>(
                 value: selectedCurrency,
-                decoration: const InputDecoration(
+                decoration: InputDecoration(
                   labelText: 'Mata Uang',
-                  border: OutlineInputBorder(),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  prefixIcon: const Icon(Icons.currency_exchange),
+                  filled: true,
+                  fillColor: Colors.grey[50],
+                  contentPadding: const EdgeInsets.symmetric(
+                    vertical: 16,
+                    horizontal: 12,
+                  ),
                 ),
                 items: currencyRates.keys
                     .map(
@@ -419,42 +510,57 @@ class _CheckoutPageState extends State<CheckoutPage> {
                 onChanged: (val) => setState(() => selectedCurrency = val!),
               ),
               const SizedBox(height: 24),
+              Text(
+                'Ringkasan Belanja',
+                style: GoogleFonts.poppins(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: themeColor,
+                ),
+              ),
+              const SizedBox(height: 12),
               ListTile(
                 title: Text(
-                  'Subtotal',
+                  'Subtotal Barang',
                   style: GoogleFonts.poppins(fontSize: 16),
                 ),
                 trailing: Text(
                   '\$${subtotal.toStringAsFixed(2)}',
-                  style: GoogleFonts.poppins(fontSize: 16),
+                  style: GoogleFonts.poppins(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w500,
+                  ),
                 ),
               ),
               ListTile(
                 title: Text(
-                  'Ongkos Kirim',
+                  'Biaya Pengiriman',
                   style: GoogleFonts.poppins(fontSize: 16),
                 ),
                 trailing: Text(
-                  '\$${courierCost.toStringAsFixed(2)}',
+                  _isFreeShipping
+                      ? 'Gratis'
+                      : '\$${courierCost.toStringAsFixed(2)}',
                   style: GoogleFonts.poppins(
                     fontSize: 16,
-                    color: _isFreeShipping ? Colors.green : null,
+                    fontWeight: FontWeight.w500,
+                    color: _isFreeShipping ? Colors.green.shade700 : null,
                   ),
                 ),
               ),
-              const Divider(),
+              const Divider(height: 20, thickness: 1.5),
               ListTile(
                 title: Text(
                   'Total Pembayaran',
                   style: GoogleFonts.poppins(
-                    fontSize: 18,
+                    fontSize: 20,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
                 trailing: Text(
                   formattedTotal,
                   style: GoogleFonts.poppins(
-                    fontSize: 18,
+                    fontSize: 20,
                     fontWeight: FontWeight.bold,
                     color: themeColor,
                   ),
@@ -468,14 +574,15 @@ class _CheckoutPageState extends State<CheckoutPage> {
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  elevation: 5,
                 ),
                 onPressed: _checkout,
                 child: Text(
                   'Bayar Sekarang',
                   style: GoogleFonts.poppins(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w600,
+                    fontSize: 19,
+                    fontWeight: FontWeight.w700,
                   ),
                 ),
               ),

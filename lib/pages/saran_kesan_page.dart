@@ -70,9 +70,9 @@ class SaranKesanPage extends StatelessWidget {
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      "Mata kuliah ini sangat menarik dan relevan dengan perkembangan teknologi saat ini. Untuk saran, mungkin bisa ditambahkan lebih banyak studi kasus riil atau proyek kelompok yang lebih besar agar mahasiswa bisa merasakan proses pengembangan aplikasi mobile secara end-to-end. Pembaruan materi tentang fitur-fitur terbaru Flutter/Dart juga akan sangat bermanfaat.",
+                      "Mata kuliah ini sangat menyenangkan dan membuka wawasan saya tentang bagaimana aplikasi mobile dibuat dari awal. Penjelasan dosen mudah dipahami dan praktiknya cukup menantang namun seru. Semoga ke depannya materi terus disesuaikan dengan perkembangan Flutter yang cepat agar makin relevan dengan dunia kerja.",
                       style: GoogleFonts.poppins(
-                        fontSize: 16,
+                        fontSize: 12,
                         color: Colors.grey[700],
                       ),
                     ),
@@ -89,7 +89,7 @@ class SaranKesanPage extends StatelessWidget {
                     Text(
                       "Saya merasa sangat terbantu dengan penjelasan yang diberikan, terutama terkait konsep-konsep dasar Flutter dan Provider. Praktikum yang diberikan juga sangat membantu dalam memahami implementasi teori. Meskipun terkadang menantang, proses belajarnya menyenangkan dan memberikan fondasi yang kuat untuk pengembangan aplikasi mobile di masa depan. Terima kasih banyak!",
                       style: GoogleFonts.poppins(
-                        fontSize: 16,
+                        fontSize: 12,
                         color: Colors.grey[700],
                       ),
                     ),

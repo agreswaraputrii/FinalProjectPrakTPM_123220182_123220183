@@ -49,7 +49,7 @@ class _CartPageState extends State<CartPage> {
 
   @override
   Widget build(BuildContext context) {
-    final Color primaryColor = const Color(0xFF4E342E);
+    final Color primaryColor = const Color(0xFF2E7D32);
     final Color accentColor = const Color(0xFFFF7043);
 
     return Scaffold(

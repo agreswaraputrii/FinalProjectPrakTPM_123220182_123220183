@@ -69,7 +69,7 @@ class _EditProductPageState extends State<EditProductPage> {
 
     _selectedShipping =
         _shippingOptions.contains(widget.product.shippingInformation)
-        ? widget.product.shippingInformation!
+        ? widget.product.shippingInformation
         : _shippingOptions.first;
   }
 
@@ -237,8 +237,9 @@ class _EditProductPageState extends State<EditProductPage> {
                   label: 'Info Pengiriman*',
                   items: _shippingOptions,
                   onChanged: (newValue) {
-                    if (newValue != null)
+                    if (newValue != null) {
                       setState(() => _selectedShipping = newValue);
+                    }
                   },
                 ),
 
