@@ -130,12 +130,13 @@ class _CheckoutPageState extends State<CheckoutPage> {
     try {
       bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
       if (!serviceEnabled) {
-        if (mounted)
+        if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
               content: Text('Layanan lokasi tidak aktif. Mohon aktifkan GPS.'),
             ),
           );
+        }
         return;
       }
 
@@ -143,16 +144,17 @@ class _CheckoutPageState extends State<CheckoutPage> {
       if (permission == LocationPermission.denied) {
         permission = await Geolocator.requestPermission();
         if (permission == LocationPermission.denied) {
-          if (mounted)
+          if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(content: Text('Izin lokasi ditolak.')),
             );
+          }
           return;
         }
       }
 
       if (permission == LocationPermission.deniedForever) {
-        if (mounted)
+        if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
               content: Text(
@@ -160,16 +162,18 @@ class _CheckoutPageState extends State<CheckoutPage> {
               ),
             ),
           );
+        }
         return;
       }
 
-      if (mounted)
+      if (mounted) {
         showDialog(
           context: context,
           barrierDismissible: false,
           builder: (context) =>
               const Center(child: CircularProgressIndicator()),
         );
+      }
 
       Position position = await Geolocator.getCurrentPosition(
         desiredAccuracy: LocationAccuracy.high,
@@ -191,10 +195,11 @@ class _CheckoutPageState extends State<CheckoutPage> {
       }
     } catch (e) {
       if (mounted) Navigator.of(context, rootNavigator: true).pop();
-      if (mounted)
+      if (mounted) {
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(SnackBar(content: Text('Gagal mendapatkan lokasi: $e')));
+      }
     }
   }
 
@@ -331,7 +336,6 @@ class _CheckoutPageState extends State<CheckoutPage> {
                 validator: (val) => val!.isEmpty ? 'Wajib diisi' : null,
                 maxLines: 3,
               ),
-
               Align(
                 alignment: Alignment.centerLeft,
                 child: TextButton.icon(
@@ -341,7 +345,6 @@ class _CheckoutPageState extends State<CheckoutPage> {
                 ),
               ),
               const SizedBox(height: 8),
-
               _isFreeShipping
                   ? TextFormField(
                       controller: _courierController,
@@ -380,7 +383,6 @@ class _CheckoutPageState extends State<CheckoutPage> {
                         labelText: 'Jasa Kirim',
                       ),
                     ),
-
               const SizedBox(height: 16),
               DropdownButtonFormField<String>(
                 value: selectedPayment,

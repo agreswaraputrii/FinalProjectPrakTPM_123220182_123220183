@@ -88,6 +88,43 @@ class ProductProvider with ChangeNotifier {
     return false;
   }
 
+  Future<void> addReview(String productId, ProductReview newReview) async {
+    // Cari produk di database lokal
+    final productToUpdate = _productBox.get(productId);
+
+    if (productToUpdate != null) {
+      // 1. Tambahkan ulasan baru ke daftar ulasan produk
+      productToUpdate.reviews.add(newReview);
+
+      // 2. Hitung ulang rata-rata rating
+      if (productToUpdate.reviews.isNotEmpty) {
+        double totalRating = productToUpdate.reviews
+            .map((r) => r.rating)
+            .reduce((a, b) => a + b)
+            .toDouble();
+        double newAverageRating = totalRating / productToUpdate.reviews.length;
+        // Batasi hingga 2 angka desimal untuk kebersihan
+        productToUpdate.rating = double.parse(
+          newAverageRating.toStringAsFixed(2),
+        );
+      } else {
+        // Jika tidak ada review, rating kembali ke 0
+        productToUpdate.rating = 0.0;
+      }
+
+      // 3. Simpan produk yang sudah diperbarui kembali ke Hive
+      await productToUpdate.save();
+
+      // 4. Muat ulang daftar produk lokal dari Hive dan perbarui UI
+      _loadLocalProducts();
+      notifyListeners();
+
+      print('Review added and rating updated for ${productToUpdate.title}');
+    } else {
+      print('Product with ID $productId not found in local storage.');
+    }
+  }
+
   // Mengurangi stok produk di Hive setelah ada pesanan
   Future<void> reduceStockForOrder(List<OrderProductItem> items) async {
     for (final item in items) {

@@ -4,7 +4,7 @@ import 'package:hive/hive.dart';
 import '../models/order_model.dart';
 import '../models/user_model.dart';
 import '../services/order_service.dart';
-import '../services/local_notification_service.dart'; // Import service notifikasi
+import '../services/local_notification_service.dart';
 
 class OrderProvider with ChangeNotifier {
   late OrderService _orderService;
@@ -35,21 +35,16 @@ class OrderProvider with ChangeNotifier {
     notifyListeners();
   }
 
-  // --- METHOD BARU UNTUK UPDATE STATUS ---
   Future<void> updateOrderStatus(String orderId, OrderStatus newStatus) async {
-    // Panggil service untuk menyimpan perubahan ke database Hive
     await _orderService.updateOrderStatus(orderId, newStatus);
-
-    // Cari pesanan di dalam list provider dan perbarui statusnya
     final index = _orders.indexWhere((order) => order.orderId == orderId);
     if (index != -1) {
       _orders[index].status = newStatus;
-      // --- PERUBAHAN: Kirim notifikasi push ke pembeli ---
+
       String notificationTitle = 'Status Pesanan Berubah';
       String notificationBody =
-          'Status pesanan #${orderId.substring(0, 8)} Anda telah diperbarui menjadi ${newStatus.name}.';
+          'Status pesanan #${orderId.substring(0, 8)} Anda telah diperbarui.';
 
-      // Pesan yang lebih ramah pengguna
       switch (newStatus) {
         case OrderStatus.confirmed:
           notificationBody = 'Pesanan Anda telah dikonfirmasi oleh penjual.';
@@ -66,12 +61,31 @@ class OrderProvider with ChangeNotifier {
       }
 
       await LocalNotificationService.showNotification(
-        id: orderId.hashCode, // Gunakan ID unik dari order
+        id: orderId.hashCode,
         title: notificationTitle,
         body: notificationBody,
       );
 
       notifyListeners();
+    }
+  }
+
+  // --- METHOD YANG DITAMBAHKAN UNTUK MENGATASI ERROR ---
+  Future<void> markOrderAsReviewed(String orderId) async {
+    // Panggil service untuk mendapatkan order berdasarkan ID
+    final order = _orderService.getOrderById(orderId);
+    if (order != null) {
+      // Ubah status ulasan menjadi true
+      order.hasBeenReviewed = true;
+      // Simpan perubahan ke database Hive
+      await order.save();
+
+      // Perbarui juga state di dalam list provider agar UI langsung reaktif
+      final index = _orders.indexWhere((o) => o.orderId == orderId);
+      if (index != -1) {
+        _orders[index].hasBeenReviewed = true;
+        notifyListeners();
+      }
     }
   }
 

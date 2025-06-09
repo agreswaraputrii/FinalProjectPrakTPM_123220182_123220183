@@ -85,6 +85,8 @@ class OrderModel extends HiveObject {
   OrderStatus status; // Status pesanan (menggunakan enum OrderStatus)
   @HiveField(14)
   String sellerUsername; // Username penjual (asumsi satu penjual per order)
+  @HiveField(15, defaultValue: false)
+  bool hasBeenReviewed;
 
   OrderModel({
     // orderId dan orderDate bisa di-generate otomatis jika tidak disediakan
@@ -103,6 +105,7 @@ class OrderModel extends HiveObject {
     DateTime? orderDate,
     this.status = OrderStatus.pending, // Default status saat order dibuat
     required this.sellerUsername, // Seller yang terkait dengan pesanan
+    this.hasBeenReviewed = false, // Nilai default saat order dibuat
   }) : orderId =
            orderId ?? const Uuid().v4(), // Generate UUID jika tidak ada ID
        orderDate =

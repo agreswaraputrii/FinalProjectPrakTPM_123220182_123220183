@@ -81,13 +81,14 @@ class OrderModelAdapter extends TypeAdapter<OrderModel> {
       orderDate: fields[12] as DateTime?,
       status: fields[13] as OrderStatus,
       sellerUsername: fields[14] as String,
+      hasBeenReviewed: fields[15] == null ? false : fields[15] as bool,
     );
   }
 
   @override
   void write(BinaryWriter writer, OrderModel obj) {
     writer
-      ..writeByte(15)
+      ..writeByte(16)
       ..writeByte(0)
       ..write(obj.orderId)
       ..writeByte(1)
@@ -117,7 +118,9 @@ class OrderModelAdapter extends TypeAdapter<OrderModel> {
       ..writeByte(13)
       ..write(obj.status)
       ..writeByte(14)
-      ..write(obj.sellerUsername);
+      ..write(obj.sellerUsername)
+      ..writeByte(15)
+      ..write(obj.hasBeenReviewed);
   }
 
   @override

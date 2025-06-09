@@ -18,7 +18,7 @@ class ProductModel extends HiveObject {
   @HiveField(5)
   final double discountPercentage;
   @HiveField(6)
-  final double rating;
+  double rating;
   @HiveField(7)
   int stock; // Dibuat tidak final agar bisa diubah
   @HiveField(8)
@@ -34,7 +34,7 @@ class ProductModel extends HiveObject {
   @HiveField(13)
   final String availabilityStatus;
   @HiveField(14)
-  final List<ProductReview> reviews;
+  List<ProductReview> reviews;
   @HiveField(15)
   final String? returnPolicy; // Diubah menjadi opsional
   @HiveField(16)

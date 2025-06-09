@@ -1,16 +1,18 @@
 // lib/pages/my_orders_page.dart
-
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import '../models/order_model.dart';
+import '../models/user_model.dart'; // <-- IMPORT MODEL USER
 import '../providers/order_provider.dart';
+import 'submit_review_page.dart'; // <-- IMPORT HALAMAN REVIEW BARU
 
 class MyOrdersPage extends StatelessWidget {
-  final String customerUsername;
+  // --- PERUBAHAN: Menerima objek UserModel lengkap ---
+  final UserModel currentUser;
 
-  const MyOrdersPage({super.key, required this.customerUsername});
+  const MyOrdersPage({super.key, required this.currentUser});
 
   // Helper untuk mendapatkan warna dan teks status
   Map<String, dynamic> _getStatusStyle(OrderStatus status) {
@@ -38,10 +40,13 @@ class MyOrdersPage extends StatelessWidget {
       appBar: AppBar(
         title: Text('Riwayat Pesanan Saya', style: GoogleFonts.poppins()),
         backgroundColor: const Color(0xFF2E7D32),
+        foregroundColor: Colors.white,
       ),
       body: Consumer<OrderProvider>(
         builder: (context, orderProvider, child) {
-          final myOrders = orderProvider.getOrdersForCustomer(customerUsername);
+          final myOrders = orderProvider.getOrdersForCustomer(
+            currentUser.username,
+          );
 
           if (orderProvider.isLoading) {
             return const Center(child: CircularProgressIndicator());
@@ -57,17 +62,17 @@ class MyOrdersPage extends StatelessWidget {
           }
 
           return ListView.builder(
-            padding: const EdgeInsets.all(16.0),
+            padding: const EdgeInsets.all(12.0),
             itemCount: myOrders.length,
             itemBuilder: (context, index) {
               final order = myOrders[index];
               final statusStyle = _getStatusStyle(order.status);
 
               return Card(
-                elevation: 4,
+                elevation: 3,
                 margin: const EdgeInsets.only(bottom: 16),
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(15),
                 ),
                 child: Padding(
                   padding: const EdgeInsets.all(16.0),
@@ -86,18 +91,19 @@ class MyOrdersPage extends StatelessWidget {
                           ),
                           Container(
                             padding: const EdgeInsets.symmetric(
-                              horizontal: 8,
-                              vertical: 4,
+                              horizontal: 10,
+                              vertical: 5,
                             ),
                             decoration: BoxDecoration(
-                              color: statusStyle['color'].withOpacity(0.2),
-                              borderRadius: BorderRadius.circular(8),
+                              color: statusStyle['color'].withOpacity(0.15),
+                              borderRadius: BorderRadius.circular(20),
                             ),
                             child: Text(
                               statusStyle['text'],
                               style: GoogleFonts.poppins(
                                 color: statusStyle['color'],
                                 fontWeight: FontWeight.w600,
+                                fontSize: 12,
                               ),
                             ),
                           ),
@@ -112,19 +118,42 @@ class MyOrdersPage extends StatelessWidget {
                         'Tanggal: ${DateFormat('dd MMM yyyy, HH:mm').format(order.orderDate)}',
                         style: GoogleFonts.poppins(),
                       ),
-                      const SizedBox(height: 8),
+                      const SizedBox(height: 10),
                       ...order.items.map(
-                        (item) => ListTile(
-                          contentPadding: EdgeInsets.zero,
-                          leading: Image.network(
-                            item.productImageUrl,
-                            width: 50,
-                            height: 50,
-                            fit: BoxFit.cover,
-                            errorBuilder: (c, e, s) => const Icon(Icons.image),
+                        (item) => Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 4.0),
+                          child: Row(
+                            children: [
+                              ClipRRect(
+                                borderRadius: BorderRadius.circular(8),
+                                child: Image.network(
+                                  item.productImageUrl,
+                                  width: 50,
+                                  height: 50,
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (c, e, s) => const Icon(
+                                    Icons.image_not_supported,
+                                    size: 40,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Text(
+                                  item.productName,
+                                  style: GoogleFonts.poppins(),
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                              Text(
+                                'x${item.quantity}',
+                                style: GoogleFonts.poppins(
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ],
                           ),
-                          title: Text(item.productName),
-                          trailing: Text('x${item.quantity}'),
                         ),
                       ),
                       const Divider(height: 20),
@@ -140,47 +169,66 @@ class MyOrdersPage extends StatelessWidget {
                         ),
                       ),
 
-                      // --- PERUBAHAN DI SINI: Tombol Konfirmasi Penerimaan ---
-                      // Tampilkan tombol ini hanya jika status pesanan adalah "Dikirim"
-                      if (order.status == OrderStatus.shipped) ...[
-                        const SizedBox(height: 16),
-                        SizedBox(
-                          width: double.infinity,
-                          child: ElevatedButton.icon(
-                            icon: const Icon(
-                              Icons.check_circle_outline,
-                              color: Colors.white,
-                            ),
-                            label: Text(
-                              'Pesanan Sudah Diterima',
-                              style: GoogleFonts.poppins(color: Colors.white),
-                            ),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.green.shade600,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(10),
-                              ),
-                              padding: const EdgeInsets.symmetric(vertical: 12),
-                            ),
-                            onPressed: () {
-                              // Panggil provider untuk mengubah status menjadi 'delivered'
-                              context.read<OrderProvider>().updateOrderStatus(
-                                order.orderId,
-                                OrderStatus.delivered,
-                              );
+                      // --- ALUR TOMBOL YANG BENAR ---
 
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text(
-                                    'Terima kasih! Status pesanan telah diperbarui.',
-                                  ),
-                                  backgroundColor: Colors.green,
+                      // 1. Tombol untuk konfirmasi penerimaan (muncul saat status 'shipped')
+                      if (order.status == OrderStatus.shipped)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 12.0),
+                          child: SizedBox(
+                            width: double.infinity,
+                            child: ElevatedButton.icon(
+                              onPressed: () {
+                                context.read<OrderProvider>().updateOrderStatus(
+                                  order.orderId,
+                                  OrderStatus.delivered,
+                                );
+                              },
+                              icon: const Icon(Icons.check_circle_outline),
+                              label: const Text("Pesanan Diterima"),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.green.shade600,
+                                foregroundColor: Colors.white,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(10),
                                 ),
-                              );
-                            },
+                              ),
+                            ),
                           ),
                         ),
-                      ],
+
+                      // 2. Tombol untuk memberi ulasan (muncul saat 'delivered' dan belum diulas)
+                      if (order.status == OrderStatus.delivered &&
+                          !(order.hasBeenReviewed ??
+                              false)) // <-- PERBAIKAN DI SINI
+                        Padding(
+                          padding: const EdgeInsets.only(top: 8.0),
+                          child: SizedBox(
+                            width: double.infinity,
+                            child: OutlinedButton.icon(
+                              onPressed: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => SubmitReviewPage(
+                                      order: order,
+                                      currentUser: currentUser,
+                                    ),
+                                  ),
+                                );
+                              },
+                              icon: const Icon(Icons.rate_review_outlined),
+                              label: const Text("Beri Ulasan"),
+                              style: OutlinedButton.styleFrom(
+                                side: BorderSide(color: Colors.amber.shade800),
+                                foregroundColor: Colors.amber.shade800,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
                     ],
                   ),
                 ),

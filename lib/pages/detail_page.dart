@@ -101,200 +101,120 @@ class _DetailPageState extends State<DetailPage> {
 
   @override
   Widget build(BuildContext context) {
-    final product = widget.product;
-    final Color primaryColor = const Color(0xFF4E342E);
-    final Color textColor = Colors.grey[800]!;
+    // Gunakan Consumer agar UI otomatis update saat rating atau ulasan produk berubah
+    return Consumer<ProductProvider>(
+      builder: (context, productProvider, child) {
+        // Ambil versi produk terbaru dari provider untuk memastikan data selalu fresh
+        final product = productProvider.allProducts.firstWhere(
+          (p) => p.id == widget.product.id,
+          orElse: () =>
+              widget.product, // Fallback ke produk awal jika belum ditemukan
+        );
+        final isOwner = product.uploaderUsername == widget.currentUser.username;
+        final Color primaryColor = const Color(0xFF4E342E);
 
-    // Cek apakah pengguna yang melihat adalah pemilik produk
-    final bool isOwner =
-        product.uploaderUsername != null &&
-        product.uploaderUsername == widget.currentUser.username;
-
-    return Scaffold(
-      appBar: AppBar(
-        backgroundColor: primaryColor,
-        title: Text(product.title, style: GoogleFonts.poppins()),
-        actions: [
-          // Pemilik produk tidak bisa memfavoritkan produk sendiri
-          if (!isOwner)
-            IconButton(
-              icon: Icon(
-                isFavorite ? Icons.favorite : Icons.favorite_border,
-                color: isFavorite ? Colors.redAccent : Colors.white,
-              ),
-              onPressed: toggleFavorite,
-            ),
-        ],
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Gambar Produk
-            SizedBox(
-              height: 250,
-              child: PageView.builder(
-                itemCount: product.images.isNotEmpty
-                    ? product.images.length
-                    : 1,
-                itemBuilder: (context, index) {
-                  return ClipRRect(
-                    borderRadius: BorderRadius.circular(18),
-                    child: product.images.isNotEmpty
-                        ? Image.network(
-                            product.images[index],
-                            fit: BoxFit.cover,
-                            width: double.infinity,
-                            errorBuilder: (context, error, stackTrace) =>
-                                const Icon(Icons.broken_image, size: 50),
-                          )
-                        : Container(
-                            color: Colors.grey[300],
-                            child: const Icon(
-                              Icons.image_not_supported,
-                              size: 50,
-                              color: Colors.grey,
-                            ),
-                          ),
-                  );
-                },
-              ),
-            ),
-            const SizedBox(height: 16),
-
-            // Nama Produk
-            Text(
-              product.title,
-              style: GoogleFonts.poppins(
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
-                color: primaryColor,
-              ),
-            ),
-            const SizedBox(height: 8),
-
-            // Info Penjual
-            if (product.uploaderUsername != null &&
-                product.uploaderUsername!.isNotEmpty) ...[
-              _buildInfoRow(
-                icon: Icons.store_mall_directory_outlined,
-                label: 'Dijual oleh:',
-                value: product.uploaderUsername!,
-              ),
-              const SizedBox(height: 8),
+        return Scaffold(
+          appBar: AppBar(
+            backgroundColor: primaryColor,
+            foregroundColor: Colors.white,
+            title: Text(product.title, style: GoogleFonts.poppins()),
+            actions: [
+              // Pemilik tidak bisa memfavoritkan produknya sendiri
+              if (!isOwner)
+                IconButton(
+                  icon: Icon(
+                    isFavorite ? Icons.favorite : Icons.favorite_border,
+                    color: isFavorite ? Colors.redAccent : Colors.white,
+                  ),
+                  onPressed: toggleFavorite,
+                ),
             ],
+          ),
+          body: SingleChildScrollView(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _buildProductImage(product),
+                const SizedBox(height: 16),
+                _buildProductHeader(product),
+                const Divider(height: 24),
+                _buildPriceSection(product),
+                const SizedBox(height: 16),
+                _buildInfoSection(product),
+                const Divider(height: 24),
+                _buildDescriptionSection(product),
+                const Divider(height: 24),
+                _buildReviewSection(product),
+                const SizedBox(height: 24),
+                if (!isOwner)
+                  _buildBuyerActions(product)
+                else
+                  _buildSellerNotice(),
+                if (isOwner) _buildSellerEditDeleteActions(product),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
 
-            // Kategori, Rating, Stok
-            _buildInfoRow(
-              icon: Icons.category_outlined,
-              label: 'Kategori:',
-              value: product.category,
-            ),
-            _buildInfoRow(
-              icon: Icons.star_border_outlined,
-              label: 'Rating:',
-              value: "${product.rating.toStringAsFixed(1)} / 5.0",
-            ),
-            _buildInfoRow(
-              icon: Icons.inventory_2_outlined,
-              label: 'Stok Tersisa:',
-              value: "${product.stock} buah",
-            ),
-            const Divider(height: 24),
+  // --- WIDGET HELPER ---
 
-            // Harga
-            _buildPriceSection(product),
-            const SizedBox(height: 16),
-
-            // Info Grosir
-            _buildInfoRow(
-              icon: Icons.shopping_basket_outlined,
-              label: 'Minimal Pembelian:',
-              value: '${product.minimumOrderQuantity} buah',
-            ),
-            const Divider(height: 24),
-            if (product.tags.isNotEmpty &&
-                !(product.tags.length == 1 && product.tags.first.isEmpty))
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    "Tags",
-                    style: GoogleFonts.poppins(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w600,
+  Widget _buildProductImage(ProductModel product) {
+    return SizedBox(
+      height: 250,
+      child: PageView.builder(
+        itemCount: product.images.isNotEmpty ? product.images.length : 1,
+        itemBuilder: (context, index) {
+          return ClipRRect(
+            borderRadius: BorderRadius.circular(18),
+            child: product.images.isNotEmpty
+                ? Image.network(
+                    product.images[index],
+                    fit: BoxFit.cover,
+                    width: double.infinity,
+                    errorBuilder: (c, e, s) =>
+                        const Icon(Icons.broken_image, size: 50),
+                  )
+                : Container(
+                    color: Colors.grey[300],
+                    child: const Icon(
+                      Icons.image_not_supported,
+                      size: 50,
+                      color: Colors.grey,
                     ),
                   ),
-                  const SizedBox(height: 8),
-                  Wrap(
-                    spacing: 8.0, // Jarak horizontal antar chip
-                    runSpacing: 4.0, // Jarak vertikal antar baris chip
-                    children: product.tags
-                        .map(
-                          (tag) => Chip(
-                            label: Text(tag, style: GoogleFonts.poppins()),
-                            backgroundColor: Colors.green[100],
-                            side: BorderSide(color: Colors.green.shade200),
-                          ),
-                        )
-                        .toList(),
-                  ),
-                  const Divider(height: 24),
-                ],
-              ),
-
-            // Deskripsi
-            Text(
-              "Deskripsi Produk",
-              style: GoogleFonts.poppins(
-                fontSize: 18,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              product.description,
-              style: GoogleFonts.poppins(fontSize: 14, color: textColor),
-            ),
-            const SizedBox(height: 24),
-
-            // --- BAGIAN AKSI (TOMBOL) ---
-            // Tampilkan tombol Beli/Keranjang HANYA jika bukan pemilik
-            if (!isOwner) _buildBuyerActions() else _buildSellerNotice(),
-
-            // Tombol Edit/Delete hanya untuk pemilik
-            if (isOwner) _buildSellerEditDeleteActions(),
-          ],
-        ),
+          );
+        },
       ),
     );
   }
 
-  Widget _buildInfoRow({
-    required IconData icon,
-    required String label,
-    required String value,
-  }) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4.0),
-      child: Row(
-        children: [
-          Icon(icon, color: Colors.grey[600], size: 18),
-          const SizedBox(width: 8),
-          Text('$label ', style: GoogleFonts.poppins(fontSize: 15)),
-          Expanded(
-            child: Text(
-              value,
-              style: GoogleFonts.poppins(
-                fontSize: 15,
-                fontWeight: FontWeight.w600,
-              ),
-              overflow: TextOverflow.ellipsis,
-            ),
+  Widget _buildProductHeader(ProductModel product) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          product.title,
+          style: GoogleFonts.poppins(
+            fontSize: 24,
+            fontWeight: FontWeight.bold,
+            color: const Color(0xFF4E342E),
           ),
+        ),
+        const SizedBox(height: 8),
+        if (product.uploaderUsername != null &&
+            product.uploaderUsername!.isNotEmpty) ...[
+          _buildInfoRow(
+            icon: Icons.store_mall_directory_outlined,
+            label: 'Dijual oleh:',
+            value: product.uploaderUsername!,
+          ),
+          const SizedBox(height: 8),
         ],
-      ),
+      ],
     );
   }
 
@@ -340,8 +260,157 @@ class _DetailPageState extends State<DetailPage> {
     }
   }
 
-  Widget _buildBuyerActions() {
-    final product = widget.product;
+  Widget _buildInfoSection(ProductModel product) {
+    return Column(
+      children: [
+        _buildInfoRow(
+          icon: Icons.category_outlined,
+          label: 'Kategori:',
+          value: product.category,
+        ),
+        _buildInfoRow(
+          icon: Icons.star_border_outlined,
+          label: 'Rating:',
+          value:
+              "${product.rating.toStringAsFixed(1)} / 5.0 (${product.reviews.length} ulasan)",
+        ),
+        _buildInfoRow(
+          icon: Icons.inventory_2_outlined,
+          label: 'Stok Tersisa:',
+          value: "${product.stock} buah",
+        ),
+        _buildInfoRow(
+          icon: Icons.shopping_basket_outlined,
+          label: 'Minimal Pembelian:',
+          value: '${product.minimumOrderQuantity} buah',
+        ),
+      ],
+    );
+  }
+
+  Widget _buildDescriptionSection(ProductModel product) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (product.tags.isNotEmpty &&
+            !(product.tags.length == 1 && product.tags.first.isEmpty))
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                "Tags",
+                style: GoogleFonts.poppins(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 8.0,
+                runSpacing: 4.0,
+                children: product.tags
+                    .map(
+                      (tag) => Chip(
+                        label: Text(tag, style: GoogleFonts.poppins()),
+                        backgroundColor: Colors.green[100],
+                        side: BorderSide(color: Colors.green.shade200),
+                      ),
+                    )
+                    .toList(),
+              ),
+              const Divider(height: 24),
+            ],
+          ),
+        Text(
+          "Deskripsi Produk",
+          style: GoogleFonts.poppins(fontSize: 18, fontWeight: FontWeight.w600),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          product.description,
+          style: GoogleFonts.poppins(fontSize: 14, color: Colors.grey[800]),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildReviewSection(ProductModel product) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          "Ulasan Pengguna (${product.reviews.length})",
+          style: GoogleFonts.poppins(fontSize: 18, fontWeight: FontWeight.w600),
+        ),
+        const SizedBox(height: 8),
+        if (product.reviews.isEmpty)
+          const Center(
+            child: Padding(
+              padding: EdgeInsets.all(16.0),
+              child: Text('Belum ada ulasan untuk produk ini.'),
+            ),
+          )
+        else
+          ListView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            itemCount: product.reviews.length,
+            itemBuilder: (context, index) {
+              final review = product.reviews.reversed.toList()[index];
+              return Card(
+                elevation: 1,
+                shadowColor: Colors.black12,
+                margin: const EdgeInsets.symmetric(vertical: 4),
+                child: ListTile(
+                  title: Text(
+                    review.reviewerName,
+                    style: GoogleFonts.poppins(fontWeight: FontWeight.w600),
+                  ),
+                  subtitle: Text(review.comment, style: GoogleFonts.poppins()),
+                  trailing: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text('${review.rating}'),
+                      const SizedBox(width: 4),
+                      const Icon(Icons.star, color: Colors.amber, size: 16),
+                    ],
+                  ),
+                ),
+              );
+            },
+          ),
+      ],
+    );
+  }
+
+  Widget _buildInfoRow({
+    required IconData icon,
+    required String label,
+    required String value,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4.0),
+      child: Row(
+        children: [
+          Icon(icon, color: Colors.grey[600], size: 18),
+          const SizedBox(width: 8),
+          Text('$label ', style: GoogleFonts.poppins(fontSize: 15)),
+          Expanded(
+            child: Text(
+              value,
+              style: GoogleFonts.poppins(
+                fontSize: 15,
+                fontWeight: FontWeight.w600,
+              ),
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildBuyerActions(ProductModel product) {
     final Color accentColor = const Color(0xFFFF7043);
 
     return Column(
@@ -462,8 +531,7 @@ class _DetailPageState extends State<DetailPage> {
     );
   }
 
-  Widget _buildSellerEditDeleteActions() {
-    final product = widget.product;
+  Widget _buildSellerEditDeleteActions(ProductModel product) {
     final productProvider = Provider.of<ProductProvider>(
       context,
       listen: false,

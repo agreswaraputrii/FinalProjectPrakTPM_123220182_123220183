@@ -213,7 +213,8 @@ class _ProfilePageState extends State<ProfilePage> {
                           context,
                           MaterialPageRoute(
                             builder: (context) => MyOrdersPage(
-                              customerUsername: widget.currentUser.username,
+                              currentUser:
+                                  widget.currentUser, // Kirim objek UserModel
                             ),
                           ),
                         );
