@@ -38,13 +38,14 @@ class ProductModelAdapter extends TypeAdapter<ProductModel> {
       thumbnail: fields[18] as String,
       uploaderUsername: fields[19] as String?,
       quantity: fields[20] as int,
+      unit: fields[21] as String,
     );
   }
 
   @override
   void write(BinaryWriter writer, ProductModel obj) {
     writer
-      ..writeByte(21)
+      ..writeByte(22)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
@@ -86,7 +87,9 @@ class ProductModelAdapter extends TypeAdapter<ProductModel> {
       ..writeByte(19)
       ..write(obj.uploaderUsername)
       ..writeByte(20)
-      ..write(obj.quantity);
+      ..write(obj.quantity)
+      ..writeByte(21)
+      ..write(obj.unit);
   }
 
   @override

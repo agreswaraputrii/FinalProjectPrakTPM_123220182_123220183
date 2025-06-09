@@ -277,12 +277,13 @@ class _DetailPageState extends State<DetailPage> {
         _buildInfoRow(
           icon: Icons.inventory_2_outlined,
           label: 'Stok Tersisa:',
-          value: "${product.stock} buah",
+          value: "${product.stock} ${product.unit}", // <-- Lebih dinamis!
         ),
         _buildInfoRow(
           icon: Icons.shopping_basket_outlined,
           label: 'Minimal Pembelian:',
-          value: '${product.minimumOrderQuantity} buah',
+          value:
+              '${product.minimumOrderQuantity} ${product.unit}', // <-- Lebih dinamis!
         ),
       ],
     );

@@ -297,40 +297,207 @@ class _HomePageState extends State<HomePage> {
     ProductModel product,
   ) async {
     final int moq = product.minimumOrderQuantity;
-    final controller = TextEditingController(text: moq.toString());
+    int currentQuantity = moq; // Mulai dari MOQ
+
+    // Menggunakan StatefulBuilder untuk memperbarui UI dialog secara lokal
     await showDialog(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text("Tambah ${product.title}"),
-        content: TextField(
-          controller: controller,
-          keyboardType: TextInputType.number,
-          decoration: InputDecoration(
-            labelText: "Jumlah",
-            helperText: "Kelipatan ${moq}",
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text("Batal"),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              final quantity = int.tryParse(controller.text) ?? 0;
-              if (quantity > 0 &&
-                  quantity % moq == 0 &&
-                  quantity <= product.stock) {
-                _addToCart(product, quantity);
-                Navigator.pop(ctx);
-              } else {
-                // Show specific error
-              }
-            },
-            child: const Text("Tambahkan"),
-          ),
-        ],
-      ),
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            final isDecrementDisabled = currentQuantity <= moq;
+            final isIncrementDisabled = currentQuantity + moq > product.stock;
+
+            return AlertDialog(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+              ),
+              backgroundColor: cardColor,
+              title: Row(
+                children: [
+                  Icon(
+                    Icons.shopping_basket_rounded,
+                    color: primaryColor,
+                    size: 28,
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    // Menggunakan Expanded untuk mencegah overflow
+                    child: Text(
+                      "Tambah Jumlah ${product.title}",
+                      style: GoogleFonts.poppins(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 18,
+                        color: primaryColor,
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
+              ),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    "Stok Tersedia: ${product.stock} ${product.unit}", // Menampilkan unit
+                    style: GoogleFonts.poppins(
+                      fontSize: 14,
+                      color: Colors.grey[700],
+                    ),
+                  ),
+                  const SizedBox(height: 15),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 5,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.grey[100],
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: primaryColor.withOpacity(0.5)),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        IconButton(
+                          icon: Icon(
+                            Icons.remove,
+                            color: isDecrementDisabled
+                                ? Colors.grey
+                                : primaryColor,
+                          ),
+                          onPressed: isDecrementDisabled
+                              ? null
+                              : () {
+                                  setState(() {
+                                    currentQuantity = (currentQuantity - moq)
+                                        .clamp(moq, product.stock);
+                                  });
+                                },
+                        ),
+                        Expanded(
+                          child: Text(
+                            '$currentQuantity ${product.unit}', // Menampilkan unit
+                            textAlign: TextAlign.center,
+                            style: GoogleFonts.poppins(
+                              fontSize: 20,
+                              fontWeight: FontWeight.bold,
+                              color: primaryColor,
+                            ),
+                          ),
+                        ),
+                        IconButton(
+                          icon: Icon(
+                            Icons.add,
+                            color: isIncrementDisabled
+                                ? Colors.grey
+                                : primaryColor,
+                          ),
+                          onPressed: isIncrementDisabled
+                              ? null
+                              : () {
+                                  setState(() {
+                                    currentQuantity = (currentQuantity + moq)
+                                        .clamp(moq, product.stock);
+                                  });
+                                },
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  Text(
+                    "Harga per ${product.unit}: \$${product.finalPrice.toStringAsFixed(2)}",
+                    style: GoogleFonts.poppins(
+                      fontSize: 14,
+                      color: Colors.grey[700],
+                    ),
+                  ),
+                  Text(
+                    "Total Harga: \$${(product.finalPrice * currentQuantity).toStringAsFixed(2)}",
+                    style: GoogleFonts.poppins(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: accentColor,
+                    ),
+                  ),
+                ],
+              ),
+              actionsPadding: const EdgeInsets.symmetric(
+                horizontal: 15,
+                vertical: 10,
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(ctx),
+                  style: TextButton.styleFrom(
+                    foregroundColor: Colors.grey[600],
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                  child: Text(
+                    "Batal",
+                    style: GoogleFonts.poppins(fontWeight: FontWeight.w500),
+                  ),
+                ),
+                ElevatedButton(
+                  onPressed: () {
+                    if (currentQuantity > 0 &&
+                        currentQuantity % moq == 0 &&
+                        currentQuantity <= product.stock) {
+                      _addToCart(product, currentQuantity);
+                      Navigator.pop(ctx);
+                    } else {
+                      String errorMessage = '';
+                      if (currentQuantity <= 0) {
+                        errorMessage =
+                            'Jumlah tidak boleh kurang dari atau sama dengan 0.';
+                      } else if (currentQuantity % moq != 0) {
+                        errorMessage = 'Jumlah harus kelipatan $moq.';
+                      } else if (currentQuantity > product.stock) {
+                        errorMessage =
+                            'Jumlah melebihi stok yang tersedia (${product.stock}).';
+                      }
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(
+                            errorMessage,
+                            style: GoogleFonts.poppins(),
+                          ),
+                          backgroundColor: Colors.red.shade600,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          behavior: SnackBarBehavior.floating,
+                          margin: const EdgeInsets.all(16),
+                        ),
+                      );
+                    }
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: primaryColor,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 20,
+                      vertical: 12,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    elevation: 3,
+                  ),
+                  child: Text(
+                    "Tambahkan",
+                    style: GoogleFonts.poppins(fontWeight: FontWeight.bold),
+                  ),
+                ),
+              ],
+            );
+          },
+        );
+      },
     );
   }
 
@@ -847,34 +1014,38 @@ class _HomePageState extends State<HomePage> {
               BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 20),
             ],
           ),
-          child: InkWell(
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => DetailPage(
-                    product: product,
-                    onAddToCart: _addToCart,
-                    onAddToFavorite: _addToFavorites,
-                    currentUser: widget.user,
-                    isSeller: widget.user.roles.contains('seller'),
-                    isInitialFavorite: isFavorite,
-                  ),
-                ),
-              ).then((_) => setState(() {}));
-            },
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(
-                  flex: 5,
-                  child: Stack(
-                    children: [
-                      Positioned.fill(
-                        child: ClipRRect(
-                          borderRadius: const BorderRadius.vertical(
-                            top: Radius.circular(24),
-                          ),
+          child: Column(
+            // Column wrap to separate touch areas
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                flex: 5,
+                child: Stack(
+                  children: [
+                    Positioned.fill(
+                      child: ClipRRect(
+                        borderRadius: const BorderRadius.vertical(
+                          top: Radius.circular(24),
+                        ),
+                        child: InkWell(
+                          // Make the image area tappable for detail page
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => DetailPage(
+                                  product: product,
+                                  onAddToCart: _addToCart,
+                                  onAddToFavorite: _addToFavorites,
+                                  currentUser: widget.user,
+                                  isSeller: widget.user.roles.contains(
+                                    'seller',
+                                  ),
+                                  isInitialFavorite: isFavorite,
+                                ),
+                              ),
+                            ).then((_) => setState(() {}));
+                          },
                           child: Image.network(
                             product.thumbnail,
                             width: double.infinity,
@@ -886,112 +1057,112 @@ class _HomePageState extends State<HomePage> {
                           ),
                         ),
                       ),
-                      Positioned(
-                        top: 8,
-                        right: 8,
-                        // FIX 2: Added the cart button back below the favorite button
-                        child: Column(
-                          children: [
-                            InkWell(
-                              onTap: () => _toggleFavorite(product),
-                              child: CircleAvatar(
-                                radius: 18,
-                                backgroundColor: Colors.black.withOpacity(0.4),
-                                child: Icon(
-                                  isFavorite
-                                      ? Icons.favorite
-                                      : Icons.favorite_border,
-                                  color: isFavorite
-                                      ? Colors.redAccent
-                                      : Colors.white,
-                                  size: 18,
-                                ),
+                    ),
+                    Positioned(
+                      top: 8,
+                      right: 8,
+                      child: Column(
+                        children: [
+                          InkWell(
+                            onTap: () => _toggleFavorite(product),
+                            child: CircleAvatar(
+                              radius: 18,
+                              backgroundColor: Colors.black.withOpacity(0.4),
+                              child: Icon(
+                                isFavorite
+                                    ? Icons.favorite
+                                    : Icons.favorite_border,
+                                color: isFavorite
+                                    ? Colors.redAccent
+                                    : Colors.white,
+                                size: 18,
                               ),
                             ),
-                            const SizedBox(height: 8),
-                            InkWell(
-                              onTap: isOutOfStock
-                                  ? null
-                                  : () => _showQuantityDialogWithAdd(
-                                      context,
-                                      product,
-                                    ),
-                              child: CircleAvatar(
-                                radius: 18,
-                                backgroundColor: isOutOfStock
-                                    ? Colors.grey.withOpacity(0.5)
-                                    : Colors.black.withOpacity(0.4),
-                                child: Icon(
-                                  Icons.add_shopping_cart,
-                                  color: Colors.white,
-                                  size: 18,
-                                ),
+                          ),
+                          const SizedBox(height: 8),
+                          // Ini adalah tombol keranjang yang sekarang harus berfungsi
+                          InkWell(
+                            onTap: isOutOfStock
+                                ? null
+                                : () => _showQuantityDialogWithAdd(
+                                    context,
+                                    product,
+                                  ),
+                            child: CircleAvatar(
+                              radius: 18,
+                              backgroundColor: isOutOfStock
+                                  ? Colors.grey.withOpacity(0.5)
+                                  : Colors.black.withOpacity(0.4),
+                              child: Icon(
+                                Icons.add_shopping_cart,
+                                color: Colors.white,
+                                size: 18,
                               ),
                             ),
-                          ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Expanded(
+                flex: 5,
+                child: Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    children: [
+                      Text(
+                        product.title,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: GoogleFonts.poppins(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14,
+                          height: 1.2,
                         ),
+                      ),
+                      Text(
+                        product.category,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: GoogleFonts.poppins(
+                          color: Colors.grey[700],
+                          fontSize: 12,
+                        ),
+                      ),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          Text(
+                            "\$${product.finalPrice.toStringAsFixed(2)}",
+                            style: GoogleFonts.poppins(
+                              color: primaryColor,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 16,
+                            ),
+                          ),
+                          Row(
+                            children: [
+                              Icon(Icons.star, color: accentColor, size: 16),
+                              Text(
+                                " ${product.rating.toString()}",
+                                style: GoogleFonts.poppins(
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
                       ),
                     ],
                   ),
                 ),
-                Expanded(
-                  flex: 5,
-                  child: Padding(
-                    padding: const EdgeInsets.all(12),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                      children: [
-                        Text(
-                          product.title,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: GoogleFonts.poppins(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 14,
-                            height: 1.2,
-                          ),
-                        ),
-                        Text(
-                          product.category,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: GoogleFonts.poppins(
-                            color: Colors.grey[700],
-                            fontSize: 12,
-                          ),
-                        ),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          crossAxisAlignment: CrossAxisAlignment.center,
-                          children: [
-                            Text(
-                              "\$${product.finalPrice.toStringAsFixed(2)}",
-                              style: GoogleFonts.poppins(
-                                color: primaryColor,
-                                fontWeight: FontWeight.bold,
-                                fontSize: 16,
-                              ),
-                            ),
-                            Row(
-                              children: [
-                                Icon(Icons.star, color: accentColor, size: 16),
-                                Text(
-                                  " ${product.rating.toString()}",
-                                  style: GoogleFonts.poppins(
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
       ),

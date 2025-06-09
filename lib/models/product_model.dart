@@ -50,6 +50,11 @@ class ProductModel extends HiveObject {
   @HiveField(20) // Anotasi field baru
   int quantity;
 
+  // --- TAMBAHKAN FIELD 'unit' INI ---
+  @HiveField(21) // Pastikan TypeId ini unik dan belum digunakan
+  final String unit;
+  // --- END TAMBAHKAN FIELD 'unit' INI ---
+
   ProductModel({
     required this.id,
     required this.title,
@@ -72,6 +77,10 @@ class ProductModel extends HiveObject {
     required this.thumbnail,
     this.uploaderUsername,
     this.quantity = 1,
+    // --- TAMBAHKAN 'unit' DI KONSTRUKTOR ---
+    this.unit =
+        'pcs', // Berikan nilai default, atau sesuaikan jika ada dari API
+    // --- END TAMBAHKAN 'unit' DI KONSTRUKTOR ---
   });
 
   double get finalPrice => price * (1 - discountPercentage / 100);
@@ -115,6 +124,16 @@ class ProductModel extends HiveObject {
           [],
       thumbnail: json['thumbnail'] ?? '',
       uploaderUsername: json['uploaderUsername'],
+      // 'quantity' tidak perlu di-deserialize di sini karena ini adalah model produk,
+      // bukan item keranjang yang memiliki quantity spesifik.
+      // Jika 'quantity' dimaksudkan sebagai default quantity untuk produk itu sendiri,
+      // maka perlu penanganan lebih lanjut.
+      // Namun, dalam konteks penambahan ke keranjang, quantity diatur di `_showQuantityDialogWithAdd`.
+
+      // --- TAMBAHKAN 'unit' DI fromJsonSafe ---
+      unit:
+          json['unit'] ?? 'pcs', // Ambil dari JSON, jika null default ke 'pcs'
+      // --- END TAMBAHKAN 'unit' DI fromJsonSafe ---
     );
   }
 
@@ -140,6 +159,10 @@ class ProductModel extends HiveObject {
       'images': images,
       'thumbnail': thumbnail,
       'uploaderUsername': uploaderUsername,
+      // 'quantity' tidak perlu di-serialize di sini kecuali memang bagian dari data produk statis
+      // --- TAMBAHKAN 'unit' DI toJson ---
+      'unit': unit,
+      // --- END TAMBAHKAN 'unit' DI toJson ---
     };
   }
 }
