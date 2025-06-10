@@ -1,5 +1,9 @@
 # furniture_store_app
 
+NAMA :
+1 Agreswara Putri Wijaya (123220182)
+2 Qur'ana Aulia Harlianty (123220183)
+
 A new Flutter project.
 
 ## Getting Started
