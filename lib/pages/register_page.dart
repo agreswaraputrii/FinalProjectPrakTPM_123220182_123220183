@@ -1,7 +1,6 @@
-// lib/pages/register_page.dart
 import 'package:flutter/material.dart';
 import 'package:hive/hive.dart';
-import 'dart:ui'; // Required for ImageFilter.blur
+import 'dart:ui';
 
 import '../models/user_model.dart';
 import '../services/auth_service.dart';
@@ -30,7 +29,6 @@ class _RegisterPageState extends State<RegisterPage>
   late Animation<double> _fadeAnimation;
   late Animation<Offset> _slideAnimation;
 
-  // --- Consistent Color Scheme ---
   final Color primaryColor = const Color(0xFF2E7D32); // Deep Green
   final Color secondaryColor = const Color(0xFF4CAF50); // Bright Green
   final Color accentColor = const Color(0xFFFF8F00); // Amber Accent
@@ -182,7 +180,6 @@ class _RegisterPageState extends State<RegisterPage>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      // Use a transparent AppBar for a seamless background
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,

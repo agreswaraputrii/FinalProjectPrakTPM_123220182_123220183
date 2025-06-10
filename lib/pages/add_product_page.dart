@@ -1,4 +1,3 @@
-// lib/pages/add_product_page.dart
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -20,7 +19,6 @@ class AddProductPage extends StatefulWidget {
 class _AddProductPageState extends State<AddProductPage> {
   final _formKey = GlobalKey<FormState>();
 
-  // --- Controller yang sudah disesuaikan ---
   final _titleController = TextEditingController();
   final _descriptionController = TextEditingController();
   final _priceController = TextEditingController();
@@ -29,11 +27,11 @@ class _AddProductPageState extends State<AddProductPage> {
   ); // Field diskon ditambahkan kembali
   final _stockController = TextEditingController();
   final _imageUrlController =
-      TextEditingController(); // Hanya satu field untuk gambar
+      TextEditingController(); 
   final _moqController = TextEditingController(text: '1');
   final _tagsController = TextEditingController();
 
-  // --- Pilihan untuk Dropdown Pengiriman ---
+  // Pilihan untuk Dropdown Pengiriman
   final List<String> _shippingOptions = [
     'Pengiriman Reguler',
     'Gratis Ongkir (Free Shipping)',
@@ -56,10 +54,10 @@ class _AddProductPageState extends State<AddProductPage> {
       description: _descriptionController.text,
       price: double.tryParse(_priceController.text) ?? 0.0,
       stock: stock,
-      thumbnail: imageUrl, // Gambar utama untuk thumbnail
+      thumbnail: imageUrl, 
       images: [
         imageUrl,
-      ], // Gambar utama juga menjadi satu-satunya gambar di list
+      ], 
       discountPercentage: double.tryParse(_discountController.text) ?? 0.0,
       minimumOrderQuantity: int.tryParse(_moqController.text) ?? 1,
       shippingInformation: _selectedShipping, // Menggunakan nilai dari dropdown

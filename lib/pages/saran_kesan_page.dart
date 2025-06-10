@@ -1,11 +1,9 @@
-// lib/pages/saran_kesan_page.dart
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 class SaranKesanPage extends StatelessWidget {
   const SaranKesanPage({super.key});
 
-  // Color scheme (matching RegisterPage and new HomePage style)
   final Color primaryColor = const Color(0xFF2E7D32); // Green
   final Color secondaryColor = const Color(0xFF388E3C);
   final Color accentColor = const Color(0xFFFF6B35); // Orange accent

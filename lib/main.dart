@@ -1,24 +1,19 @@
-// lib/main.dart
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:provider/provider.dart';
 import 'package:permission_handler/permission_handler.dart'; // <-- 1. IMPORT PACKAGE
 
-// Import semua models Anda
 import 'models/user_model.dart';
 import 'models/product_model.dart';
 import 'models/order_model.dart';
 import 'models/notification_model.dart';
 
-// Import services Anda
 import 'services/local_notification_service.dart';
 
-// Import providers Anda
 import 'providers/product_provider.dart';
 import 'providers/cart_provider.dart';
 import 'providers/order_provider.dart';
 
-// Import halaman login Anda
 import 'pages/login_page.dart';
 
 void main() async {

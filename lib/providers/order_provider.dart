@@ -1,4 +1,3 @@
-// lib/providers/order_provider.dart
 import 'package:flutter/material.dart';
 import 'package:hive/hive.dart';
 import '../models/order_model.dart';
@@ -70,7 +69,6 @@ class OrderProvider with ChangeNotifier {
     }
   }
 
-  // --- METHOD YANG DITAMBAHKAN UNTUK MENGATASI ERROR ---
   Future<void> markOrderAsReviewed(String orderId) async {
     // Panggil service untuk mendapatkan order berdasarkan ID
     final order = _orderService.getOrderById(orderId);

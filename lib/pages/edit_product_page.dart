@@ -1,8 +1,6 @@
-// lib/pages/edit_product_page.dart
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'dart:ui'; // For BackdropFilter
 
 import '../models/product_model.dart';
 import '../providers/product_provider.dart';
@@ -19,7 +17,6 @@ class EditProductPage extends StatefulWidget {
 class _EditProductPageState extends State<EditProductPage> {
   final _formKey = GlobalKey<FormState>();
 
-  // Controller disesuaikan dengan AddProductPage
   late TextEditingController _titleController;
   late TextEditingController _descriptionController;
   late TextEditingController _priceController;
@@ -29,14 +26,12 @@ class _EditProductPageState extends State<EditProductPage> {
   late TextEditingController _moqController;
   late TextEditingController _tagsController;
 
-  // Pilihan untuk Dropdown Pengiriman
   final List<String> _shippingOptions = [
     'Pengiriman Reguler',
     'Gratis Ongkir (Free Shipping)',
   ];
   late String _selectedShipping;
 
-  // Skema Warna Konsisten
   final Color primaryColor = const Color(0xFF2E7D32);
   final Color accentColor = const Color(0xFFFF6B35);
   final Color backgroundColor = const Color(0xFFF1F8E9);

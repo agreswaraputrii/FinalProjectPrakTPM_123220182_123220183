@@ -1,9 +1,8 @@
-// lib/models/product_model.dart
 import 'package:hive/hive.dart';
 
-part 'product_model.g.dart'; // File ini akan dibuat otomatis
+part 'product_model.g.dart';
 
-@HiveType(typeId: 6) // Pastikan TypeId ini unik di seluruh aplikasi Anda
+@HiveType(typeId: 6)
 class ProductModel extends HiveObject {
   @HiveField(0)
   final String id;

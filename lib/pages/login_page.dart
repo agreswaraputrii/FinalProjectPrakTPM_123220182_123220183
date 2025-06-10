@@ -1,4 +1,3 @@
-// lib/pages/login_page.dart
 import 'package:flutter/material.dart';
 import 'package:hive/hive.dart';
 import 'dart:ui'; // Used for ImageFilter.blur
@@ -26,7 +25,6 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
   late Animation<double> _fadeAnimation;
   late Animation<Offset> _slideAnimation;
 
-  // --- Revamped Color Scheme ---
   final Color primaryColor = const Color(0xFF2E7D32); // Deep Green
   final Color secondaryColor = const Color(0xFF4CAF50); // Bright Green
   final Color accentColor = const Color(0xFFFF8F00); // Amber Accent

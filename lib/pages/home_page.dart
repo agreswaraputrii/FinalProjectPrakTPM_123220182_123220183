@@ -1,4 +1,3 @@
-// lib/pages/home_page.dart
 import 'package:flutter/material.dart';
 import 'package:hive/hive.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -6,21 +5,18 @@ import 'package:provider/provider.dart';
 import 'package:flutter/foundation.dart';
 import 'package:intl/intl.dart';
 import 'dart:async';
-import 'dart:ui'; // For BackdropFilter
+import 'dart:ui';
 import 'package:sensors_plus/sensors_plus.dart';
 
-// Import Models
 import '../models/user_model.dart';
 import '../models/product_model.dart';
 import '../models/notification_model.dart';
 import '../pages/cart_page.dart';
 
-// Import Services & Providers
 import '../services/auth_service.dart';
 import '../services/notification_service.dart';
 import '../providers/product_provider.dart';
 
-// Import Pages
 import '../pages/login_page.dart';
 import '../pages/detail_page.dart';
 import '../pages/favorite_page.dart';
@@ -72,7 +68,6 @@ class _HomePageState extends State<HomePage> {
   DateTime _currentTime = DateTime.now();
   TimeZoneOption _selectedTimeZone = TimeZoneOption.wib;
 
-  // --- Consistent Modern Color Scheme ---
   final Color primaryColor = const Color(0xFF2E7D32); // Deep Green
   final Color secondaryColor = const Color(0xFF4CAF50); // Bright Green
   final Color accentColor = const Color(0xFFFF8F00); // Amber Accent
@@ -110,7 +105,6 @@ class _HomePageState extends State<HomePage> {
     super.dispose();
   }
 
-  // --- All backend and logic functions remain unchanged ---
   void _initTiltToScroll() {
     _accelerometerSubscription = accelerometerEvents.listen((
       AccelerometerEvent event,
@@ -725,7 +719,7 @@ class _HomePageState extends State<HomePage> {
               icon: CircleAvatar(
                 radius: 12,
                 backgroundColor: Colors.grey[200],
-                backgroundImage: const AssetImage('assets/foto_saya.jpg'),
+                backgroundImage: const AssetImage('assets/kita.jpg'),
                 child: const SizedBox.shrink(),
               ),
               label: 'My Profil',

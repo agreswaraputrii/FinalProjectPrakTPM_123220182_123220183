@@ -41,4 +41,6 @@ flutter:
   uses-material-design: true
   assets:
     - assets/success.json
-    - assets/foto_saya.jpg
+    - assets/putrii.jpg
+    - assets/nanaa.jpg
+    - assets/kita.jpg

@@ -77,7 +77,7 @@ class _FavoritePageState extends State<FavoritePage> {
                       onPressed: () => removeFromFavorites(product),
                     ),
                     onTap: () {
-                      // Bisa tambahkan navigasi ke DetailPage jika mau
+                      
                     },
                   ),
                 );

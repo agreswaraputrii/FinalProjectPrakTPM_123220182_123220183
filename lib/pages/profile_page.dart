@@ -3,7 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import '../models/user_model.dart';
 import '../providers/product_provider.dart';
-import '../providers/order_provider.dart'; // <-- IMPORT ORDER PROVIDER
+import '../providers/order_provider.dart';
 import '../pages/detail_page.dart';
 import '../pages/manage_orders_page.dart';
 import '../pages/my_orders_page.dart';
@@ -23,25 +23,11 @@ class ProfilePage extends StatefulWidget {
 }
 
 class _ProfilePageState extends State<ProfilePage> {
-  // Hapus semua state lokal yang berhubungan dengan data,
-  // karena sekarang kita akan mengambilnya langsung dari Provider.
-  // late OrderService _orderService;
-  // int customerOrdersCount = 0;
-  // int sellerOrdersCount = 0;
 
   final Color primaryColor = const Color(0xFF2E7D32);
   final Color accentColor = const Color(0xFFFF6B35);
   final Color backgroundColor = const Color(0xFFF1F8E9);
   final Color cardColor = Colors.white;
-
-  // Hapus semua method yang berhubungan dengan loading data manual
-  // @override
-  // void initState() {
-  //   super.initState();
-  //   _initServicesAndLoadData();
-  // }
-  // Future<void> _initServicesAndLoadData() async { ... }
-  // Future<void> _loadOrderCounts() async { ... }
 
   @override
   Widget build(BuildContext context) {
@@ -62,7 +48,6 @@ class _ProfilePageState extends State<ProfilePage> {
             .getOrdersForSeller(widget.currentUser.username)
             .length;
 
-        // Mulai bangun UI dengan data yang sudah reaktif
         return Container(
           decoration: BoxDecoration(
             gradient: LinearGradient(
@@ -172,7 +157,6 @@ class _ProfilePageState extends State<ProfilePage> {
                   ),
                   const SizedBox(height: 32),
 
-                  // --- PERBAIKAN UTAMA DI SINI ---
                   // --- Order Summary Cards (Data dari Provider) ---
                   Text(
                     'Ringkasan Pesanan',

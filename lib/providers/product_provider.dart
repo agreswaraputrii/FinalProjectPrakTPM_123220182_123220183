@@ -17,8 +17,6 @@ class ProductProvider with ChangeNotifier {
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
 
-  /// --- PERBAIKAN UTAMA DI SINI ---
-  /// Getter ini bertugas untuk menggabungkan produk dari dua sumber:
   /// 1. Produk dari API (DummyJSON).
   /// 2. Produk lokal yang ditambahkan oleh semua penjual (disimpan di Hive).
   /// Keduanya kemudian disaring untuk hanya menampilkan yang berkategori 'groceries'.
@@ -26,8 +24,6 @@ class ProductProvider with ChangeNotifier {
     // Gabungkan semua produk dari sumber lokal dan API menjadi satu daftar besar.
     final combinedList = [..._localProducts, ..._apiProducts];
 
-    // Saring daftar gabungan untuk hanya mengembalikan produk 'groceries'.
-    // Ini memastikan halaman utama Anda hanya menampilkan produk yang relevan.
     return combinedList
         .where((product) => product.category.toLowerCase() == 'groceries')
         .toList();

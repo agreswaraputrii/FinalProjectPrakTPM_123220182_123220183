@@ -1,20 +1,17 @@
-// lib/pages/my_orders_page.dart
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import '../models/order_model.dart';
-import '../models/user_model.dart'; // <-- IMPORT MODEL USER
+import '../models/user_model.dart';
 import '../providers/order_provider.dart';
-import 'submit_review_page.dart'; // <-- IMPORT HALAMAN REVIEW BARU
+import 'submit_review_page.dart';
 
 class MyOrdersPage extends StatelessWidget {
-  // --- PERUBAHAN: Menerima objek UserModel lengkap ---
   final UserModel currentUser;
 
   const MyOrdersPage({super.key, required this.currentUser});
 
-  // Helper untuk mendapatkan warna dan teks status
   Map<String, dynamic> _getStatusStyle(OrderStatus status) {
     switch (status) {
       case OrderStatus.pending:
@@ -168,8 +165,6 @@ class MyOrdersPage extends StatelessWidget {
                           ),
                         ),
                       ),
-
-                      // --- ALUR TOMBOL YANG BENAR ---
 
                       // 1. Tombol untuk konfirmasi penerimaan (muncul saat status 'shipped')
                       if (order.status == OrderStatus.shipped)

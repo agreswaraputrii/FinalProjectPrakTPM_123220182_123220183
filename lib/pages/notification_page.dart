@@ -26,7 +26,7 @@ class _NotificationPageState extends State<NotificationPage> {
   }
 
   Future<void> _initServiceAndLoadNotifications() async {
-    // Pastikan Hive Box sudah terbuka
+    // Hive Box sudah terbuka
     if (!Hive.isBoxOpen('notificationBox')) {
       await Hive.openBox<NotificationModel>('notificationBox');
     }
@@ -113,12 +113,10 @@ class _NotificationPageState extends State<NotificationPage> {
                         : const Icon(Icons.circle, color: Colors.blue, size: 10), // Indikator belum dibaca
                     onTap: () {
                       _markAsRead(notification);
-                      // Anda bisa menambahkan navigasi ke detail pesanan jika referenceId ada
                       if (notification.referenceId != null) {
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(content: Text("Detail pesanan ${notification.referenceId} akan datang!")),
                         );
-                        // Contoh: Navigator.push(context, MaterialPageRoute(builder: (_) => OrderDetailPage(orderId: notification.referenceId)));
                       }
                     },
                   ),

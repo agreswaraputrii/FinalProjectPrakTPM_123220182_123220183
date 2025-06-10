@@ -1,5 +1,3 @@
-// lib/services/order_service.dart
-
 import 'package:hive/hive.dart';
 import '../models/order_model.dart';
 import '../models/user_model.dart';
@@ -10,7 +8,6 @@ class OrderService {
 
   OrderService(this._orderBox, this._userBox);
 
-  // --- METHOD YANG DITAMBAHKAN ---
   /// Method untuk mengambil semua pesanan dari database Hive.
   /// Ini yang akan dipanggil oleh `loadOrders()` di provider.
   List<OrderModel> getAllOrders() {
@@ -20,7 +17,6 @@ class OrderService {
     return orders;
   }
 
-  // --- METHOD YANG DITAMBAHKAN ---
   /// Method generik untuk menyimpan pesanan ke Hive.
   /// Ini yang akan dipanggil oleh `addOrder()` di provider.
   Future<void> saveOrder(OrderModel newOrder) async {
@@ -84,9 +80,4 @@ class OrderService {
     }
     print('--------------------------');
   }
-
-  // Method createOrder Anda yang sebelumnya tidak lagi diperlukan karena
-  // logikanya sudah dipindahkan ke checkout_page dan provider.
-  // Namun, jika Anda masih menggunakannya di tempat lain, Anda bisa membiarkannya.
-  // Untuk saat ini, saya hapus agar lebih bersih.
 }

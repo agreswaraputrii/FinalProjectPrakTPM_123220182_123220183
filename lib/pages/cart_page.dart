@@ -1,4 +1,3 @@
-// lib/pages/cart_page.dart
 import 'package:flutter/material.dart';
 import '../models/product_model.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -183,7 +182,7 @@ class _CartPageState extends State<CartPage> {
                     },
                   ),
                 ),
-                // --- Container Total Harga dan Tombol Checkout ---
+                // Container Total Harga dan Tombol Checkout
                 Container(
                   padding: const EdgeInsets.symmetric(
                     horizontal: 16,

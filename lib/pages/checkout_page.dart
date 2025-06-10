@@ -1,11 +1,9 @@
-// lib/pages/checkout_page.dart
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:hive/hive.dart';
 import 'package:provider/provider.dart';
 
-// --- IMPORT UNTUK LBS (LOKASI) ---
 import 'package:geolocator/geolocator.dart';
 import 'package:geocoding/geocoding.dart';
 
@@ -125,7 +123,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
     return format.format(totalConverted);
   }
 
-  // --- METHOD LBS YANG DIKEMBALIKAN ---
+  // METHOD LBS
   Future<void> _getCurrentLocationAndFillAddress() async {
     try {
       bool serviceEnabled = await Geolocator.isLocationServiceEnabled();

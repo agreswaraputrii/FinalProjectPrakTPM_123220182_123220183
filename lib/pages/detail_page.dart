@@ -1,4 +1,3 @@
-// lib/pages/detail_page.dart
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
@@ -184,8 +183,6 @@ class _DetailPageState extends State<DetailPage> {
     );
   }
 
-  // --- WIDGET HELPER ---
-
   Widget _buildProductImage(ProductModel product) {
     return SizedBox(
       height: 250,
@@ -301,13 +298,13 @@ class _DetailPageState extends State<DetailPage> {
         _buildInfoRow(
           icon: Icons.inventory_2_outlined,
           label: 'Stok Tersisa:',
-          value: "${product.stock} ${product.unit}", // <-- Lebih dinamis!
+          value: "${product.stock} ${product.unit}",
         ),
         _buildInfoRow(
           icon: Icons.shopping_basket_outlined,
           label: 'Minimal Pembelian:',
           value:
-              '${product.minimumOrderQuantity} ${product.unit}', // <-- Lebih dinamis!
+              '${product.minimumOrderQuantity} ${product.unit}',
         ),
       ],
     );
@@ -488,7 +485,7 @@ class _DetailPageState extends State<DetailPage> {
                   }
                   widget.onAddToCart(product, quantity);
                   _showSnackBar(
-                    '${quantity} ${product.unit} ${product.title} ditambahkan ke keranjang!',
+                    '$quantity ${product.unit} ${product.title} ditambahkan ke keranjang!',
                     Colors.green.shade600,
                     icon: Icons.check_circle_outline,
                   );

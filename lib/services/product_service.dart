@@ -1,4 +1,3 @@
-// lib/services/product_service.dart
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../models/product_model.dart'; // Sesuaikan path jika berbeda
@@ -6,12 +5,6 @@ import '../models/product_model.dart'; // Sesuaikan path jika berbeda
 class ProductService {
   static const String _baseUrl = 'https://dummyjson.com/products';
 
-  // --- READ Operations ---
-
-  /// Mengambil daftar semua produk atau produk berdasarkan kategori jika diberikan.
-  /// DummyJSON tidak menyediakan endpoint untuk filtering berdasarkan kategori tertentu
-  /// secara langsung di `/products`, melainkan `/products/category/{category_name}`.
-  /// Kita akan sesuaikan di sini.
   Future<List<ProductModel>> fetchProducts({String? category}) async {
     final String url;
     if (category != null && category.isNotEmpty) {
@@ -61,9 +54,6 @@ class ProductService {
 
   // --- CREATE Operation ---
 
-  /// Menambahkan produk baru.
-  /// DummyJSON tidak benar-benar menyimpan data, jadi ini hanya akan mengembalikan
-  /// objek produk dengan ID baru (simulasi).
   Future<ProductModel> addProduct(ProductModel product) async {
     final String url = '$_baseUrl/add';
     try {
@@ -90,9 +80,6 @@ class ProductService {
 
   // --- UPDATE Operation ---
 
-  /// Memperbarui produk yang sudah ada.
-  /// DummyJSON tidak benar-benar memperbarui data, jadi ini hanya akan mengembalikan
-  /// objek produk yang diperbarui (simulasi).
   Future<ProductModel> updateProduct(int id, ProductModel product) async {
     final String url = '$_baseUrl/$id'; // Endpoint UPDATE menggunakan PUT
     try {
@@ -119,9 +106,6 @@ class ProductService {
 
   // --- DELETE Operation ---
 
-  /// Menghapus produk.
-  /// DummyJSON tidak benar-benar menghapus data, jadi ini hanya akan mengembalikan
-  /// objek produk yang "dihapus" (simulasi).
   Future<ProductModel> deleteProduct(int id) async {
     final String url = '$_baseUrl/$id';
     try {

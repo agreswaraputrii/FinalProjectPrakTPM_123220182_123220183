@@ -63,7 +63,7 @@ class AuthService {
       );
 
       // Jika login berhasil, buat ID sesi unik dan simpan ke objek user
-      final sessionId = _uuid.v4(); // Buat UUID versi 4
+      final sessionId = _uuid.v4(); // Buat UUID
       user.currentSessionId = sessionId;
       await user.save(); // Simpan perubahan pada user ke Hive
 

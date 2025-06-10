@@ -18,7 +18,7 @@ class SuccessPage extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Lottie.asset(
-                'assets/success.json', // Pastikan file ini ada di folder assets
+                'assets/success.json',
                 width: 150,
                 repeat: false,
               ),

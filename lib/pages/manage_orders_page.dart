@@ -1,11 +1,9 @@
-// lib/pages/manage_orders_page.dart
-
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import '../models/order_model.dart';
 import '../providers/order_provider.dart';
-import '../providers/product_provider.dart'; // <-- 1. IMPORT PRODUCT PROVIDER
+import '../providers/product_provider.dart';
 
 class ManageOrdersPage extends StatelessWidget {
   final String sellerUsername;
